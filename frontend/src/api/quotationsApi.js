@@ -5,6 +5,11 @@ export async function createQuotation(customerId) {
   return data.quotation; 
 }
 
+export async function getQuotations() {
+  const data = await apiGet('/quotations');
+  return data.quotations;
+}
+
 export async function addLine(quotationId, { productId, quantity, discountPercent }) {
   const data = await apiPost(`/quotations/${quotationId}/lines`, { 
     productId: Number(productId), 

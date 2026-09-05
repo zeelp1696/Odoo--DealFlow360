@@ -8,8 +8,8 @@ async function getDashboardStats() {
   try {
     const [pending, open, atRisk, recent] = await Promise.all([
       query("SELECT COUNT(*) FROM approvals WHERE status = 'Pending'"),
-      query("SELECT COUNT(*) FROM quotations WHERE status NOT IN ('Accepted', 'Rejected')"),
-      query("SELECT COUNT(DISTINCT quotation_id) FROM quotation_lines WHERE over_limit_points > 0 AND quotation_id IN (SELECT id FROM quotations WHERE status NOT IN ('Accepted', 'Rejected'))"),
+      query("SELECT COUNT(*) FROM quotations WHERE status NOT IN ('Confirmed', 'Rejected')"),
+      query("SELECT COUNT(DISTINCT quotation_id) FROM quotation_lines WHERE over_limit_points > 0 AND quotation_id IN (SELECT id FROM quotations WHERE status NOT IN ('Confirmed', 'Rejected'))"),
       query("SELECT 'Quotation ' || code || ' updated to ' || status AS action, last_activity_at AS timestamp FROM quotations ORDER BY last_activity_at DESC NULLS LAST, created_at DESC LIMIT 3")
     ]);
 
