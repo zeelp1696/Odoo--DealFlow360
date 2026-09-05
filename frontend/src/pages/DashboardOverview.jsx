@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function DashboardOverview({ user, setActiveModule }) {
+export default function DashboardOverview({ user, setActiveModule, stats }) {
   if (user.role === 'customer') {
     return (
       <section className="dashboard-light">
@@ -22,15 +22,15 @@ export default function DashboardOverview({ user, setActiveModule }) {
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>4</h2>
+          <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>{stats?.pendingApprovals ?? 0}</h2>
           <p style={{ margin: 0, fontSize: '1rem', color: '#64736a', fontWeight: 500 }}>Pending Approvals</p>
         </div>
         <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>12</h2>
+          <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>{stats?.openQuotations ?? 0}</h2>
           <p style={{ margin: 0, fontSize: '1rem', color: '#64736a', fontWeight: 500 }}>Open Quotations</p>
         </div>
         <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>3</h2>
+          <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>{stats?.atRiskDeals ?? 0}</h2>
           <p style={{ margin: 0, fontSize: '1rem', color: '#64736a', fontWeight: 500 }}>At-Risk Deals</p>
         </div>
       </div>
@@ -43,21 +43,22 @@ export default function DashboardOverview({ user, setActiveModule }) {
       <div className="dashboard-card" style={{ padding: '2rem' }}>
         <h3 style={{ color: '#16443a', margin: '0 0 1.5rem 0', fontWeight: 600, fontSize: '1.2rem', borderBottom: '1px solid #e8eee9', paddingBottom: '1rem' }}>Recent Activity</h3>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.95rem', color: '#17231f' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#e2b75b' }}></span>
-            <span><strong>Acme Corp</strong> quotation approved by Finance</span>
-            <span style={{ marginLeft: 'auto', color: '#64736a', fontSize: '0.85rem' }}>2 hours ago</span>
-          </li>
-          <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.95rem', color: '#17231f' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#e2b75b' }}></span>
-            <span><strong>Beta Industries</strong> requested a discount change</span>
-            <span style={{ marginLeft: 'auto', color: '#64736a', fontSize: '0.85rem' }}>5 hours ago</span>
-          </li>
-          <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.95rem', color: '#17231f' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#e2b75b' }}></span>
-            <span><strong>East Depot</strong> stock updated for Order #2291</span>
-            <span style={{ marginLeft: 'auto', color: '#64736a', fontSize: '0.85rem' }}>1 day ago</span>
-          </li>
+          {(!stats?.recentActivity || stats.recentActivity.length === 0) ? (
+            <li style={{ color: '#64736a', fontSize: '0.95rem' }}>No recent activity logs.</li>
+          ) : (
+            stats.recentActivity.map((log, index) => {
+              const timeString = new Date(log.timestamp).toLocaleString(undefined, {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+              });
+              return (
+                <li key={index} style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.95rem', color: '#17231f' }}>
+                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#e2b75b', flexShrink: 0 }}></span>
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.action}</span>
+                  <span style={{ color: '#64736a', fontSize: '0.85rem', flexShrink: 0 }}>{timeString}</span>
+                </li>
+              );
+            })
+          )}
         </ul>
       </div>
     </section>

@@ -49,25 +49,25 @@ function Dashboard() {
 
   return <main className="app-shell">
     <div className="app-content">
-      <nav className="top-nav">
-        <div className="brand">DealFlow360</div>
-        {(navigationByRole[user.role] || []).map(([id, label]) => (
-          <button 
-            key={id} 
-            className={`nav-item ${activeModule === id ? 'active' : ''}`}
-            onClick={() => setActiveModule(id)}
-          >
-            {label}
-          </button>
-        ))}
-        <div className="user-controls">
-          <small style={{ opacity: 0.8 }}>{user.name} ({roleLabels[user.role]})</small>
-          <button className="nav-item" onClick={logout} style={{ border: '1px solid rgba(255,255,255,0.3)' }}>Logout</button>
-        </div>
-      </nav>
+      <div className="portal-header">
+        <div className="portal-brand">DealFlow<span>360</span></div>
+        <div className="portal-role">{user.name} ({roleLabels[user.role]})</div>
+        <nav>
+          {(navigationByRole[user.role] || []).map(([id, label]) => (
+            <button 
+              key={id} 
+              className={`portal-tab ${activeModule === id ? 'active' : ''}`}
+              onClick={() => setActiveModule(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+        <button className="portal-logout" onClick={logout}>Logout</button>
+      </div>
       
       {activeModule === 'overview' && (
-        <DashboardOverview user={user} setActiveModule={setActiveModule} />
+        <DashboardOverview user={user} setActiveModule={setActiveModule} stats={data?.stats} />
       )}
     {activeModule === 'quotations' && <QuotationBuilder />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
