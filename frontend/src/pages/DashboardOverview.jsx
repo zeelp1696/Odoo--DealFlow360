@@ -21,11 +21,11 @@ export default function DashboardOverview({ user, setActiveModule, stats }) {
       </div>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'pointer' }} onClick={() => setActiveModule('approvals')}>
           <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>{stats?.pendingApprovals ?? 0}</h2>
           <p style={{ margin: 0, fontSize: '1rem', color: '#64736a', fontWeight: 500 }}>Pending Approvals</p>
         </div>
-        <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="dashboard-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', cursor: 'pointer' }} onClick={() => setActiveModule('quotations')}>
           <h2 style={{ fontSize: '2.5rem', margin: 0, color: '#16443a', fontWeight: 700 }}>{stats?.openQuotations ?? 0}</h2>
           <p style={{ margin: 0, fontSize: '1rem', color: '#64736a', fontWeight: 500 }}>Open Quotations</p>
         </div>

@@ -6,6 +6,7 @@ import LoginForm from './components/LoginForm.jsx';
 import { moduleDescriptions, navigationByRole } from './config/navigation.js';
 import ModulePanel from './components/ModulePanel.jsx';
 import DashboardOverview from './pages/DashboardOverview.jsx';
+import QuotationsPage from './pages/QuotationsPage.jsx';
 import QuotationBuilder from './pages/QuotationBuilder.jsx';
 import Catalog from './pages/Catalog.jsx';
 import Governance from './pages/Governance.jsx';
@@ -69,7 +70,7 @@ function Dashboard() {
       {activeModule === 'overview' && (
         <DashboardOverview user={user} setActiveModule={setActiveModule} stats={data?.stats} />
       )}
-    {activeModule === 'quotations' && <QuotationBuilder />}
+    {activeModule === 'quotations' && <QuotationsPage />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
     {['admin', 'sales_manager', 'finance'].includes(user.role) && <ApprovalQueue session={session} />}
     {activeModule === 'catalog' && <Catalog user={user} />}
