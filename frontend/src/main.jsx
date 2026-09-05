@@ -52,7 +52,7 @@ function Dashboard() {
   return <main className="app-shell">
     <div className="app-content">
       <div className="portal-header">
-        <div className="portal-brand">DealFlow<span>360</span></div>
+        <div className="portal-brand">DF<span>360</span></div>
         <div className="portal-role">{user.name} ({roleLabels[user.role]})</div>
         <nav>
           {(navigationByRole[user.role] || []).map(([id, label]) => (
@@ -73,11 +73,11 @@ function Dashboard() {
       )}
     {activeModule === 'quotations' && <QuotationsPage startCreatingNew={createQuotationIntent} clearIntent={() => setCreateQuotationIntent(false)} />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
-    {['admin', 'sales_manager', 'finance'].includes(user.role) && <ApprovalQueue session={session} />}
+    {activeModule === 'approvals' && ['admin', 'sales_manager', 'finance'].includes(user.role) && <ApprovalQueue session={session} />}
     {activeModule === 'catalog' && <Catalog user={user} />}
     {activeModule === 'governance' && <Governance user={user} />}</div></main>;
 }
 
 function App() { const { session, login } = useContext(AuthContext); return session ? <Dashboard /> : <LoginForm onLogin={login} />; }
-class AppErrorBoundary extends React.Component { state = { hasError: false }; static getDerivedStateFromError() { return { hasError: true }; } render() { return this.state.hasError ? <main className="error-screen"><h1>DealFlow360 could not load</h1><p>Refresh the page or reset the local session.</p><button onClick={() => { clearStoredSession(); window.location.assign(window.location.origin); }}>Reset session</button></main> : this.props.children; } }
+class AppErrorBoundary extends React.Component { state = { hasError: false }; static getDerivedStateFromError() { return { hasError: true }; } render() { return this.state.hasError ? <main className="error-screen"><h1>DF360 could not load</h1><p>Refresh the page or reset the local session.</p><button onClick={() => { clearStoredSession(); window.location.assign(window.location.origin); }}>Reset session</button></main> : this.props.children; } }
 createRoot(document.getElementById('root')).render(<AppErrorBoundary><AuthProvider><App /></AuthProvider></AppErrorBoundary>);
