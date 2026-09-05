@@ -32,6 +32,7 @@ function Dashboard() {
   const { session, logout, login } = useContext(AuthContext); const user = session.user; const workspace = workspaceFor[user.role]; const headers = { Authorization: `Bearer ${session.token}` };
   const [activeModule, setActiveModule] = useState('overview');
   const [data, setData] = useState(null);
+  const [createQuotationIntent, setCreateQuotationIntent] = useState(false);
   
   useEffect(() => { 
     fetch(`${API}/workspaces/${workspace}`, { headers })
@@ -68,9 +69,9 @@ function Dashboard() {
       </div>
       
       {activeModule === 'overview' && (
-        <DashboardOverview user={user} setActiveModule={setActiveModule} stats={data?.stats} />
+        <DashboardOverview user={user} setActiveModule={setActiveModule} stats={data?.stats} setCreateQuotationIntent={setCreateQuotationIntent} />
       )}
-    {activeModule === 'quotations' && <QuotationsPage />}
+    {activeModule === 'quotations' && <QuotationsPage startCreatingNew={createQuotationIntent} clearIntent={() => setCreateQuotationIntent(false)} />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
     {['admin', 'sales_manager', 'finance'].includes(user.role) && <ApprovalQueue session={session} />}
     {activeModule === 'catalog' && <Catalog user={user} />}
