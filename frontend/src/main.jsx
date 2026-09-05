@@ -9,6 +9,7 @@ import DashboardOverview from './pages/DashboardOverview.jsx';
 import QuotationBuilder from './pages/QuotationBuilder.jsx';
 import Catalog from './pages/Catalog.jsx';
 import Governance from './pages/Governance.jsx';
+import CustomerPortal from './components/CustomerPortal.jsx';
 
 const API = 'http://localhost:4000/api';
 const AuthContext = createContext(null);
@@ -41,6 +42,10 @@ function Dashboard() {
       .then(setData)
       .catch(error => console.error(error.message)); 
   }, [workspace, session.token]);
+
+  if (user.role === 'customer') {
+    return <CustomerPortal session={session} user={user} onLogout={logout} />;
+  }
 
   return <main className="app-shell">
     <div className="app-content">
