@@ -1,25 +1,22 @@
+const standardInternal = [
+  ['overview', 'Dashboard'],
+  ['quotations', 'Quotations'],
+  ['approvals', 'Approvals'],
+  ['fulfillment', 'Fulfillment'],
+  ['subscriptions', 'Subscriptions'],
+  ['billing', 'Invoices'],
+  ['deal-health', 'Deal Health'],
+  ['reports', 'Reports']
+];
+
 export const navigationByRole = {
-  admin: [
-    ['overview', 'Dashboard'], ['catalog', 'Products & pricing'], ['governance', 'Discount & approval'],
-    ['inventory', 'Warehouses & stock'], ['subscriptions', 'Subscription plans'], ['upsell', 'Upsell rules'],
-    ['reports', 'Reports'], ['administration', 'Users & roles'],
-  ],
-  sales_rep: [
-    ['overview', 'Dashboard'], ['quotations', 'Quotations'], ['catalog', 'Customers & products'],
-    ['upsell', 'Recommendations'], ['approvals', 'My approval requests'], ['fulfillment', 'Fulfillment'],
-    ['billing', 'Billing & payments'], ['negotiation', 'Customer requests'],
-  ],
-  sales_manager: [
-    ['overview', 'Dashboard'], ['approvals', 'Approval queue'], ['quotations', 'Team quotations'],
-    ['governance', 'Discount rules'], ['fulfillment', 'Order monitoring'], ['deal-health', 'Deal health'], ['reports', 'Reports'],
-  ],
-  finance: [
-    ['overview', 'Dashboard'], ['approvals', 'High-risk approvals'], ['fulfillment', 'Warehouse fulfillment'],
-    ['billing', 'Invoices & payments'], ['subscriptions', 'Subscriptions'], ['deal-health', 'Alerts'], ['reports', 'Reports'],
-  ],
+  admin: [...standardInternal, ['catalog', 'Product Catalog'], ['governance', 'Discount Rules']],
+  sales_rep: standardInternal,
+  sales_manager: standardInternal,
+  finance: standardInternal,
   customer: [
-    ['overview', 'Dashboard'], ['quotations', 'My quotations'], ['negotiation', 'Negotiation'],
-    ['orders', 'My orders'], ['billing', 'Invoices & payments'], ['support', 'Questions & requests'],
+    ['overview', 'Dashboard'], 
+    ['customer-portal', 'My Quotation / Messages / Profile']
   ],
 };
 
