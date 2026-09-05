@@ -9,6 +9,7 @@ import discountRoutes from './routes/discounts.js';
 import quotationRoutes from './routes/quotations.js';
 import approvalRoutes from './routes/approvals.js';
 import moduleRoutes from './routes/modules.js';
+import customerPortalRoutes from './routes/customerPortal.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -22,5 +23,6 @@ app.use('/api/discounts', discountRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/modules', moduleRoutes);
+app.use('/api/customer-portal', customerPortalRoutes);
 app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ message: 'Unexpected server error.' }); });
 app.listen(port, () => console.log(`DealFlow360 API listening on http://localhost:${port}`));
