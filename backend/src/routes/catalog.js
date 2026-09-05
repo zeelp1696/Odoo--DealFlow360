@@ -18,7 +18,7 @@ router.get('/products', requireRoles(...internalRoles), async (_req, res, next) 
       FROM products p
       LEFT JOIN product_variants v ON v.product_id = p.id
       GROUP BY p.id
-      ORDER BY p.category, p.name
+      ORDER BY p.id DESC
     `);
     return res.json({ products: result.rows });
   } catch (error) { return next(error); }
@@ -49,16 +49,35 @@ router.get('/price-lists', requireRoles(...internalRoles), async (_req, res, nex
 
 router.post('/products', requireRoles('admin'), async (req, res, next) => {
   try {
-    const { name, category, basePrice, unit = 'unit', taxPercent = 0, marginPercent = 20, description = '' } = req.body;
+    const { name, category, basePrice, unit = 'unit', taxPercent = 0, marginPercent = 20, description = '', variants = '', quantityOnHand = 0 } = req.body;
     if (!name || !['Hardware', 'Services', 'Subscriptions'].includes(category) || Number(basePrice) < 0) {
       return res.status(400).json({ message: 'Name, valid category, and non-negative base price are required.' });
     }
+    
+    // Begin transaction conceptually
     const result = await query(`
       INSERT INTO products (name, category, base_price, unit, tax_percent, margin_percent, description)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id, name, category, base_price, unit, tax_percent, margin_percent, description
     `, [name.trim(), category, basePrice, unit, taxPercent, marginPercent, description]);
-    return res.status(201).json({ product: result.rows[0] });
+    
+    const newProduct = result.rows[0];
+    
+    if (variants && variants.trim() !== '') {
+      await query(`
+        INSERT INTO product_variants (product_id, attribute_name, attribute_value, extra_price)
+        VALUES ($1, $2, $3, $4)
+      `, [newProduct.id, 'Variant', variants.trim(), 0]);
+    }
+    
+    if (Number(quantityOnHand) > 0) {
+      const whResult = await query(`SELECT id FROM warehouses LIMIT 1`);
+      if (whResult.rows.length > 0) {
+         await query(`INSERT INTO warehouse_stock (warehouse_id, product_id, in_stock, reserved) VALUES ($1, $2, $3, 0)`, [whResult.rows[0].id, newProduct.id, Number(quantityOnHand)]);
+      }
+    }
+
+    return res.status(201).json({ product: newProduct });
   } catch (error) { return next(error); }
 });
 
