@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function DashboardOverview({ user, setActiveModule, stats }) {
+export default function DashboardOverview({ user, setActiveModule, stats, setCreateQuotationIntent }) {
   if (user.role === 'customer') {
     return (
       <section className="dashboard-light">
@@ -36,7 +36,7 @@ export default function DashboardOverview({ user, setActiveModule, stats }) {
       </div>
       
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '3.5rem' }}>
-        <button className="btn-gold" style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }} onClick={() => setActiveModule('quotations')}>+ New Quotation</button>
+        <button className="btn-gold" style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }} onClick={() => { setCreateQuotationIntent(true); setActiveModule('quotations'); }}>+ New Quotation</button>
         <button className="btn-outline" style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }} onClick={() => setActiveModule('approvals')}>View Approvals</button>
       </div>
 

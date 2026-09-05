@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getQuotations } from '../api/quotationsApi.js';
 import QuotationBuilder from './QuotationBuilder.jsx';
 
-export default function QuotationsPage() {
+export default function QuotationsPage({ startCreatingNew, clearIntent }) {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -11,6 +11,13 @@ export default function QuotationsPage() {
   useEffect(() => {
     fetchQuotations();
   }, []);
+
+  useEffect(() => {
+    if (startCreatingNew) {
+      setIsCreatingNew(true);
+      if (clearIntent) clearIntent();
+    }
+  }, [startCreatingNew, clearIntent]);
 
   const fetchQuotations = async () => {
     setLoading(true);
@@ -67,17 +74,21 @@ export default function QuotationsPage() {
           <span className="eyebrow">Quotations (List)</span>
           <h2>Every quotation in the system, grouped by status</h2>
         </div>
-        <button className="btn-primary" onClick={() => setIsCreatingNew(!isCreatingNew)}>
-          {isCreatingNew ? 'View Board' : '+ New Quotation'}
+        <button className="btn-primary" onClick={() => setIsCreatingNew(true)}>
+          + New Quotation
         </button>
       </div>
 
-      {isCreatingNew ? (
-        <div className="new-quotation-wrapper">
-          <QuotationBuilder />
-        </div>
-      ) : (
-        renderBoard()
+      {renderBoard()}
+
+      {isCreatingNew && (
+        <QuotationBuilder 
+          onClose={() => setIsCreatingNew(false)} 
+          onSuccess={() => {
+            setIsCreatingNew(false);
+            fetchQuotations();
+          }} 
+        />
       )}
     </section>
   );
