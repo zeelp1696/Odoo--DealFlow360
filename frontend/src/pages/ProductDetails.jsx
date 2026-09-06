@@ -1,7 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export default function ProductDetails({ product, onBack }) {
+export default function ProductDetails({ user, product, onBack, onUpdated }) {
   if (!product) return null;
+
+  const isAdmin = user && user.role === 'admin';
+  const [editedProduct, setEditedProduct] = useState({
+    name: product.name,
+    category: product.category,
+    base_price: product.base_price,
+    unit: product.unit,
+    description: product.description || '',
+    margin_percent: product.margin_percent || '0',
+    tax_percent: product.tax_percent || '0'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleChange = (field, value) => {
+    if (!isAdmin) return;
+    setEditedProduct(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setMessage('');
+    try {
+      const session = localStorage.getItem('dealflow-session');
+      const token = session ? JSON.parse(session).token : '';
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000/api"}/catalog/products/${product.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(editedProduct)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update product');
+      
+      setMessage('Changes saved successfully!');
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      setMessage(err.message);
+    }
+    setIsSaving(false);
+  };
 
   // Mocked variants data based on the mockup
   const variants = [
@@ -18,8 +62,16 @@ export default function ProductDetails({ product, onBack }) {
 
   return (
     <section className="mockup-page-container">
-      <div className="mockup-actions" style={{ marginBottom: '1rem' }}>
+      <div className="mockup-actions" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button className="ghost" onClick={onBack}>&larr; Back to Catalog</button>
+        {isAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {message && <span style={{ color: message.includes('Failed') ? '#ef4444' : '#10b981', fontSize: '0.9rem' }}>{message}</span>}
+            <button className="btn-gold" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mockup-title">Product and pricelist</div>
@@ -31,38 +83,38 @@ export default function ProductDetails({ product, onBack }) {
           <div>
             <div className="mockup-field-row">
               <label>Product name</label>
-              <input type="text" readOnly value={product.name} />
+              <input type="text" readOnly={!isAdmin} value={editedProduct.name} onChange={e => handleChange('name', e.target.value)} />
             </div>
             <div className="mockup-field-row">
               <label>Category</label>
-              <input type="text" readOnly value={product.category} />
+              <input type="text" readOnly={!isAdmin} value={editedProduct.category} onChange={e => handleChange('category', e.target.value)} />
             </div>
             <div className="mockup-field-row">
               <label>Price</label>
-              <input type="text" readOnly value={product.base_price} />
+              <input type="number" readOnly={!isAdmin} value={editedProduct.base_price} onChange={e => handleChange('base_price', e.target.value)} />
             </div>
             <div className="mockup-field-row">
               <label>Unit</label>
-              <input type="text" readOnly value={product.unit} />
+              <input type="text" readOnly={!isAdmin} value={editedProduct.unit} onChange={e => handleChange('unit', e.target.value)} />
             </div>
             <div className="mockup-field-row">
               <label>Description</label>
-              <input type="text" readOnly value={product.description || ''} />
+              <input type="text" readOnly={!isAdmin} value={editedProduct.description} onChange={e => handleChange('description', e.target.value)} />
             </div>
           </div>
           <div>
             <div className="mockup-field-row">
               <label>Subscription</label>
-              <input type="text" readOnly value={product.category === 'Subscriptions' ? 'Yes' : 'No'} />
+              <input type="text" readOnly value={editedProduct.category === 'Subscriptions' ? 'Yes' : 'No'} />
             </div>
             
             <div className="mockup-field-row">
               <label>Margin %</label>
-              <input type="text" readOnly value={product.margin_percent || '0'} />
+              <input type="number" readOnly={!isAdmin} value={editedProduct.margin_percent} onChange={e => handleChange('margin_percent', e.target.value)} />
             </div>
             <div className="mockup-field-row">
               <label>Tax %</label>
-              <input type="text" readOnly value={product.tax_percent || '0'} />
+              <input type="number" readOnly={!isAdmin} value={editedProduct.tax_percent} onChange={e => handleChange('tax_percent', e.target.value)} />
             </div>
 
             <div className="mockup-field-row" style={{ alignItems: 'flex-start' }}>

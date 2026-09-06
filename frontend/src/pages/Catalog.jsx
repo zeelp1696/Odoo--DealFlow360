@@ -147,7 +147,7 @@ export default function Catalog({ user }) {
   const { products, priceLists } = catalog;
 
   if (selectedProduct) {
-    return <ProductDetails product={selectedProduct} onBack={() => setSelectedProduct(null)} />;
+    return <ProductDetails user={user} product={selectedProduct} onBack={() => setSelectedProduct(null)} onUpdated={() => { fetchCatalog(); setSelectedProduct(null); }} />;
   }
 
   return (

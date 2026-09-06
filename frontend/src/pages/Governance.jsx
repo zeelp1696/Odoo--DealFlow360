@@ -22,9 +22,40 @@ export default function Governance({ user }) {
   }, []);
 
   const handleCeilingChange = (index, value) => {
+    if (index < 0) return;
     const newCeilings = [...localCeilings];
     newCeilings[index].max_discount_percent = value;
     setLocalCeilings(newCeilings);
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedTier, setSelectedTier] = useState('');
+  const [isSavingCeiling, setIsSavingCeiling] = useState(false);
+
+  const categories = [...new Set(localCeilings.map(c => c.category))];
+  const tiers = [...new Set(localCeilings.map(c => c.tier))];
+
+  useEffect(() => {
+    if (!selectedCategory && categories.length > 0) setSelectedCategory(categories[0]);
+    if (!selectedTier && tiers.length > 0) setSelectedTier(tiers[0]);
+  }, [categories, tiers, selectedCategory, selectedTier]);
+
+  const currentCeilingIndex = localCeilings.findIndex(c => c.category === selectedCategory && c.tier === selectedTier);
+  const currentCeiling = currentCeilingIndex >= 0 ? localCeilings[currentCeilingIndex] : null;
+
+  const handleSaveCeiling = async () => {
+    if (!currentCeiling) return;
+    setIsSavingCeiling(true);
+    setGovernanceError('');
+    try {
+      await apiPut(`/discounts/ceilings/${currentCeiling.id}`, { maxDiscountPercent: Number(currentCeiling.max_discount_percent) || 0 });
+      alert('Discount ceiling saved successfully!');
+      fetchGovernance();
+    } catch (error) {
+      setGovernanceError('Error saving discount ceiling: ' + error.message);
+    } finally {
+      setIsSavingCeiling(false);
+    }
   };
 
   const handleRuleChange = (index, field, value) => {
@@ -38,7 +69,6 @@ export default function Governance({ user }) {
     setGovernanceError('');
     try {
       await Promise.all([
-        ...localCeilings.map(c => apiPut(`/discounts/ceilings/${c.id}`, { maxDiscountPercent: Number(c.max_discount_percent) || 0 })),
         ...localRules.map(r => apiPut(`/discounts/approval-rules/${r.id}`, { 
           minOverLimitPoints: Number(r.min_over_limit_points) || 0, 
           maxOverLimitPoints: r.max_over_limit_points ? Number(r.max_over_limit_points) : null,
@@ -47,7 +77,7 @@ export default function Governance({ user }) {
           riskLabel: r.risk_label
         }))
       ]);
-      alert('Configuration saved successfully!');
+      alert('Approval rules saved successfully!');
       fetchGovernance();
     } catch (error) {
       setGovernanceError('Error saving configuration: ' + error.message);
@@ -63,36 +93,45 @@ export default function Governance({ user }) {
       {governanceError && <div className="error" style={{ color: 'red', marginBottom: '1rem' }}>{governanceError}</div>}
 
       <div className="mockup-subtitle" style={{marginBottom: '0.5rem', fontSize: '0.8rem', marginTop: '2rem'}}>Discount Ceilings (Tier & Category)</div>
-      <table className="mockup-table">
-        <thead>
-          <tr>
-            <th>Tier</th>
-            <th>Category</th>
-            <th>Max Discount (%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {localCeilings.map((c, i) => (
-            <tr key={c.id}>
-              <td>{c.tier}</td>
-              <td>{c.category}</td>
-              <td>
-                <input 
-                  type="number" 
-                  min="0" 
-                  step="0.01" 
-                  value={c.max_discount_percent} 
-                  onChange={(e) => handleCeilingChange(i, e.target.value)} 
-                  style={{ padding: '0.4rem', width: '100px', border: '1px solid #ccc', borderRadius: '4px' }}
-                />
-              </td>
-            </tr>
-          ))}
-          {localCeilings.length === 0 && (
-            <tr><td colSpan="3" style={{textAlign: 'center'}}>No discount ceilings found</td></tr>
-          )}
-        </tbody>
-      </table>
+      
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: '#475569', fontWeight: '500' }}>Category</label>
+          <select 
+            value={selectedCategory} 
+            onChange={e => setSelectedCategory(e.target.value)} 
+            style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}
+          >
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: '#475569', fontWeight: '500' }}>Tier</label>
+          <select 
+            value={selectedTier} 
+            onChange={e => setSelectedTier(e.target.value)} 
+            style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}
+          >
+            {tiers.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: '#475569', fontWeight: '500' }}>Max Discount (%)</label>
+          <input 
+            type="number" 
+            min="0" step="0.01" 
+            disabled={!currentCeiling}
+            value={currentCeiling ? currentCeiling.max_discount_percent : ''} 
+            onChange={(e) => handleCeilingChange(currentCeilingIndex, e.target.value)}
+            style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+          />
+        </div>
+        <div style={{ flex: '0 0 auto' }}>
+          <button className="btn-gold" style={{ padding: '0.6rem 1.5rem', height: '100%' }} onClick={handleSaveCeiling} disabled={!currentCeiling || isSavingCeiling}>
+            {isSavingCeiling ? 'Saving...' : 'Save Discount'}
+          </button>
+        </div>
+      </div>
 
       <div className="mockup-subtitle" style={{marginBottom: '0.5rem', fontSize: '0.8rem', marginTop: '2rem'}}>Approval Chain Rules</div>
       <table className="mockup-table">
