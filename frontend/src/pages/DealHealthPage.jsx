@@ -21,7 +21,7 @@ function KpiCard({ title, value, subtitle, color }) {
   );
 }
 
-export default function DealHealthPage() {
+export default function DealHealthPage({ user }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +29,14 @@ export default function DealHealthPage() {
   const [isActing, setIsActing] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
 
+  const isAuthorized = ['admin', 'sales_manager', 'finance'].includes(user?.role);
+
   const fetchData = useCallback(async () => {
+    if (!isAuthorized) {
+      setLoading(false);
+      setData({ summary: {}, flags: [] });
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -40,7 +47,7 @@ export default function DealHealthPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthorized]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

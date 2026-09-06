@@ -9,11 +9,18 @@ const standardInternal = [
   ['reports', 'Reports']
 ];
 
+const allInternal = [
+  ...standardInternal,
+  ['catalog', 'Product Catalog'],
+  ['governance', 'Discount Rules'],
+  ['administration', 'Administration']
+];
+
 export const navigationByRole = {
-  admin: [...standardInternal, ['catalog', 'Product Catalog'], ['governance', 'Discount Rules'], ['administration', 'Administration']],
-  sales_rep: standardInternal,
-  sales_manager: standardInternal,
-  finance: standardInternal,
+  admin: allInternal,
+  sales_rep: allInternal,
+  sales_manager: allInternal,
+  finance: allInternal,
   customer: [
     ['overview', 'Dashboard'], 
     ['customer-portal', 'My Quotation / Messages / Profile']

@@ -20,11 +20,13 @@ export default function FulfillmentPage({ user }) {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const isAuthorized = ['admin', 'finance'].includes(user?.role);
 
   const fetchData = async () => {
+    if (!isAuthorized) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -36,6 +38,10 @@ export default function FulfillmentPage({ user }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, [isAuthorized]);
 
   return (
     <section className="fulfillment-page" style={{ padding: '2rem' }}>

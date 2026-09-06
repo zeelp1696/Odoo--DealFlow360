@@ -1,7 +1,7 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from './client.js';
 
-export async function createQuotation(customerId) {
-  const data = await apiPost('/quotations', { customerId: Number(customerId) });
+export async function createQuotation(userId) {
+  const data = await apiPost('/quotations', { userId: Number(userId) });
   return data.quotation; 
 }
 
