@@ -52,29 +52,42 @@ export default function ProductDetails({ product, onBack }) {
           </div>
           <div>
             <div className="mockup-field-row">
-              <label>Tax %</label>
-              <input type="text" readOnly value={product.tax_percent || '0'} />
-            </div>
-            <div className="mockup-field-row">
               <label>Subscription</label>
               <input type="text" readOnly value={product.category === 'Subscriptions' ? 'Yes' : 'No'} />
             </div>
+            
+            <div className="mockup-field-row">
+              <label>Margin %</label>
+              <input type="text" readOnly value={product.margin_percent || '0'} />
+            </div>
+            <div className="mockup-field-row">
+              <label>Tax %</label>
+              <input type="text" readOnly value={product.tax_percent || '0'} />
+            </div>
+
+            <div className="mockup-field-row" style={{ alignItems: 'flex-start' }}>
+              <label style={{ marginTop: '0.6rem' }}>Warehouses & Stock</label>
+              <div style={{ flex: 1, background: '#f8fafc', padding: '0.5rem', borderRadius: '4px', border: '1px solid #e2e8f0', minHeight: '40px' }}>
+                {product.stock_levels && product.stock_levels.length > 0 ? (
+                  product.stock_levels.map((wh, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: idx === product.stock_levels.length - 1 ? 0 : '0.25rem' }}>
+                      <span>{wh.warehouse_name}</span>
+                      <span style={{ fontWeight: '500' }}>{wh.in_stock}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span style={{ color: '#64748b', fontSize: '0.9rem' }}>No stock data</span>
+                )}
+              </div>
+            </div>
+
             {product.category === 'Subscriptions' && (
               <div className="mockup-field-row">
-                <label>Recurring</label>
-                <select readOnly value="Monthly" disabled>
-                  <option>Monthly</option>
-                  <option>Yearly</option>
-                  <option>Weekly</option>
-                </select>
-                <span className="mockup-field-hint">If subscription yes then recurring will be visible</span>
+                <label>Billing Cycle</label>
+                <input type="text" readOnly value="Monthly" />
               </div>
             )}
-            <div className="mockup-field-row">
-              <label>Quantity on hand</label>
-              <input type="text" readOnly value="150" />
-              <span className="mockup-field-hint">(Integer field)</span>
-            </div>
+
           </div>
         </div>
       </div>

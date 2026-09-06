@@ -129,8 +129,20 @@ router.post('/:id/split', requireRoles('admin', 'finance'), async (req, res, nex
   } catch (error) { return next(error); }
 });
 
+// Update stock
+router.patch('/stock/:id', requireRoles('admin', 'finance'), async (req, res, next) => {
+  try {
+    const { inStock, reserved } = req.body;
+    await query(
+      'UPDATE warehouse_stock SET in_stock = $1, reserved = $2 WHERE id = $3',
+      [inStock, reserved, req.params.id]
+    );
+    return res.json({ message: 'Stock updated successfully' });
+  } catch (error) { return next(error); }
+});
+
 // Local GET /
-router.get('/', requireRoles('admin', 'finance'), async (req, res, next) => {
+router.get('/', requireRoles('admin', 'finance', 'sales_manager', 'sales_rep'), async (req, res, next) => {
   try {
     // 1. Fetch Stock
     const stockResult = await query(`
@@ -164,7 +176,7 @@ router.get('/', requireRoles('admin', 'finance'), async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-router.get('/:id', requireRoles('admin', 'finance'), async (req, res, next) => {
+router.get('/:id', requireRoles('admin', 'finance', 'sales_manager', 'sales_rep'), async (req, res, next) => {
   try {
     const orderResult = await query(`
       SELECT fo.*, q.code as quotation_code, c.name as customer_name
