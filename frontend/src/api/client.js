@@ -60,3 +60,15 @@ export async function apiPut(path, body) {
   }
   return data;
 }
+
+export async function apiDelete(path) {
+  const res = await fetch(`${BASE_URL}${path}`, { 
+    method: 'DELETE', 
+    headers: authHeaders() 
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `DELETE ${path} failed`);
+  }
+  return data;
+}

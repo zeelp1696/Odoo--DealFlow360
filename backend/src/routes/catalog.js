@@ -81,4 +81,11 @@ router.post('/products', requireRoles('admin'), async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
+router.get('/subscription-plans', requireRoles(...internalRoles), async (_req, res, next) => {
+  try {
+    const result = await query('SELECT id, name, cycle, price, proration_rule, cancellation_rule FROM subscription_plans ORDER BY name');
+    return res.json({ plans: result.rows });
+  } catch (error) { return next(error); }
+});
+
 export default router;

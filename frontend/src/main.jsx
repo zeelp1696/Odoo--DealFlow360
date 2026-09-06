@@ -16,6 +16,12 @@ import Billing from './pages/Billing.jsx';
 import DealHealth from './pages/DealHealth.jsx';
 import Reports from './pages/Reports.jsx';
 import CustomerPortal from './components/CustomerPortal.jsx';
+import ApprovalsPage from './pages/ApprovalsPage.jsx';
+import FulfillmentPage from './pages/FulfillmentPage.jsx';
+import SubscriptionsPage from './pages/SubscriptionsPage.jsx';
+import ReportsPage from './pages/ReportsPage.jsx';
+import DealHealthPage from './pages/DealHealthPage.jsx';
+import InvoicesPage from './pages/InvoicesPage.jsx';
 
 const API = 'http://localhost:4000/api';
 const AuthContext = createContext(null);
@@ -79,15 +85,15 @@ function Dashboard() {
         <DashboardOverview user={user} setActiveModule={setActiveModule} stats={data?.stats} setCreateQuotationIntent={setCreateQuotationIntent} />
       )}
     {activeModule === 'quotations' && <QuotationsPage startCreatingNew={createQuotationIntent} clearIntent={() => setCreateQuotationIntent(false)} />}
+    {activeModule === 'approvals' && <ApprovalsPage />}
+    {activeModule === 'fulfillment' && <FulfillmentPage />}
+    {activeModule === 'subscriptions' && <SubscriptionsPage user={user} />}
+    {activeModule === 'reports' && <ReportsPage user={user} />}
+    {activeModule === 'deal-health' && <DealHealthPage />}
+    {activeModule === 'billing' && <InvoicesPage />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
-    {activeModule === 'approvals' && ['admin', 'sales_manager', 'finance'].includes(user.role) && <ApprovalQueue session={session} />}
-    {activeModule === 'fulfillment' && <Fulfillment user={user} />}
     {activeModule === 'catalog' && <Catalog user={user} />}
     {activeModule === 'governance' && <Governance user={user} />}
-    {activeModule === 'billing' && <Billing />}
-    {activeModule === 'subscriptions' && <Subscriptions />}
-    {activeModule === 'deal health' && <DealHealth />}
-    {activeModule === 'reports' && <Reports />}
     {createQuotationIntent && <QuotationBuilder onClose={() => setCreateQuotationIntent(false)} />}
     </div></main>;
 }
