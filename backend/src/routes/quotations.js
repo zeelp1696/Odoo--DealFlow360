@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool, query } from '../db.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 import { calculateBlendedRisk } from '../utils/blendedRiskScore.js';
+import { generateBillingForQuotation } from './billing.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -72,7 +73,12 @@ router.post('/:id/submit', requireRoles('sales_rep'), async (req, res, next) => 
     const risk = calculateBlendedRisk(lines, rules);
     const status = risk.requiresManager || risk.requiresFinance ? 'Pending Approval' : 'Approved';
     const updated = (await client.query('UPDATE quotations SET status = $1, blended_risk_score = $2, risk_label = $3, last_activity_at = now() WHERE id = $4 RETURNING *', [status, risk.score, risk.riskLabel, req.params.id])).rows[0];
-    if (status === 'Pending Approval') await client.query('INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage) VALUES ($1, $2, $3, $4)', [updated.id, risk.requiresManager, risk.requiresFinance, risk.requiresManager ? 'Sales Manager' : 'Finance']);
+    if (status === 'Pending Approval') {
+      await client.query('INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage) VALUES ($1, $2, $3, $4)', [updated.id, risk.requiresManager, risk.requiresFinance, risk.requiresManager ? 'Sales Manager' : 'Finance']);
+    } else if (status === 'Approved') {
+      await client.query("INSERT INTO fulfillment_orders (quotation_id, status) VALUES ($1, 'Split Pending')", [updated.id]);
+      await generateBillingForQuotation(client, updated.id);
+    }
     await client.query('COMMIT');
     return res.json({ quotation: updated, risk });
   } catch (error) { await client.query('ROLLBACK'); return next(error); }

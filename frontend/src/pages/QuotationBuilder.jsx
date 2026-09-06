@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getProducts, getCustomers } from '../api/catalogApi.js';
 import { getCeilings } from '../api/discountsApi.js';
 import { createQuotation, addLine, submitForApproval } from '../api/quotationsApi.js';
+import { apiPost } from '../api/client.js';
 
 export default function QuotationBuilder({ onClose, onSuccess }) {
   const [customers, setCustomers] = useState([]);
@@ -45,6 +46,19 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
   const removeCartItem = (productId) => {
     setCart(prev => prev.filter(item => item.product.id !== productId));
   };
+
+  const [recommendations, setRecommendations] = useState([]);
+  
+  useEffect(() => {
+    const productIds = cart.map(item => item.product.id);
+    if (productIds.length > 0) {
+      apiPost('/upsell', { productIds })
+        .then(data => setRecommendations(data.recommendations || []))
+        .catch(err => console.error(err));
+    } else {
+      setRecommendations([]);
+    }
+  }, [cart]);
 
   const calculateLine = (item) => {
     const limit = ceilings.find(c => c.tier === selectedCustomer?.tier && c.category === item.product.category)?.max_discount_percent || 0;
@@ -129,6 +143,23 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            
+            {recommendations.length > 0 && (
+              <div className="builder-recommendations" style={{ marginTop: '2rem', padding: '1.5rem', background: '#f6e8bd', borderRadius: '8px' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#8c681f' }}>Recommended for this deal</h4>
+                <div className="product-list">
+                  {recommendations.map(rec => (
+                    <div key={rec.id} className="product-item" style={{ background: '#fff' }}>
+                      <div className="product-info">
+                        <strong>{rec.name} <span style={{fontSize: '0.65rem', background: '#e2b75b', color: '#17231f', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>{rec.promo_label}</span></strong>
+                        <span>${Number(rec.base_price).toLocaleString()}</span>
+                      </div>
+                      <button type="button" className="btn-gold btn-small" onClick={() => addToCart({ id: rec.id, name: rec.name, base_price: rec.base_price, category: rec.category })}>+ Add</button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

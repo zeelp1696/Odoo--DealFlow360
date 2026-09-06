@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool, query } from '../db.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
+import { generateBillingForQuotation } from './billing.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -45,6 +46,12 @@ router.patch('/:id', requireRoles('admin', 'sales_manager', 'finance'), async (r
     if (action === 'Approved' && (approval.current_stage === 'Finance' || !approval.requires_finance)) { nextStatus = 'Approved'; quotationStatus = 'Approved'; nextStage = 'Done'; }
     await client.query('UPDATE approvals SET status = $1, current_stage = $2, assigned_to = $3 WHERE id = $4', [nextStatus, nextStage, req.user.id, req.params.id]);
     await client.query('UPDATE quotations SET status = $1, last_activity_at = now() WHERE id = $2', [quotationStatus, approval.quotation_id]);
+    
+    if (quotationStatus === 'Approved') {
+      await client.query("INSERT INTO fulfillment_orders (quotation_id, status) VALUES ($1, 'Split Pending')", [approval.quotation_id]);
+      await generateBillingForQuotation(client, approval.quotation_id);
+    }
+    
     await client.query('INSERT INTO approval_audit_log (approval_id, user_id, action, note) VALUES ($1, $2, $3, $4)', [approval.id, req.user.id, action, note]);
     await client.query('COMMIT');
     return res.json({ approval: { ...approval, status: nextStatus, current_stage: nextStage }, quotationStatus });
