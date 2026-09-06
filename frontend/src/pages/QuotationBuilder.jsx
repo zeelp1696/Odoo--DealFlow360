@@ -211,7 +211,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
                         </div>
                       </div>
                       <div className={`line-risk ${line.overLimit ? 'risk-over' : 'risk-ok'}`}>
-                        {selectedCustomer ? (
+                        {selectedUser ? (
                           line.overLimit ? `Warning: Exceeds ${line.limit}% tier limit (Requires Approval)` : `Within ${line.limit}% tier limit`
                         ) : 'Select a customer to see limits'}
                       </div>
@@ -234,7 +234,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
                   className="btn-outline builder-confirm" 
                   style={{ flex: 1 }}
                   onClick={() => handleConfirm(true)} 
-                  disabled={cart.length === 0 || !selectedCustomerId || saving}
+                  disabled={cart.length === 0 || !selectedUserId || saving}
                 >
                   {saving ? 'Saving...' : 'Save as Draft'}
                 </button>
@@ -242,7 +242,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
                   className="btn-gold builder-confirm" 
                   style={{ flex: 1 }}
                   onClick={() => handleConfirm(false)} 
-                  disabled={cart.length === 0 || !selectedCustomerId || saving}
+                  disabled={cart.length === 0 || !selectedUserId || saving}
                 >
                   {saving ? 'Processing...' : (anyOverLimit ? 'Submit for Approval ↗' : 'Confirm Quotation ↗')}
                 </button>
