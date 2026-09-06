@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { getQuotations } from '../api/quotationsApi.js';
 import QuotationBuilder from './QuotationBuilder.jsx';
+import QuotationDetail from './QuotationDetail.jsx';
 
 export default function QuotationsPage({ startCreatingNew, clearIntent }) {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [activeQuotationId, setActiveQuotationId] = useState(null);
 
   useEffect(() => {
     fetchQuotations();
@@ -47,7 +49,7 @@ export default function QuotationsPage({ startCreatingNew, clearIntent }) {
               <h3 className="kanban-column-title">{colName}</h3>
               <div className="kanban-cards">
                 {colQuotations.map(q => (
-                  <div key={q.id} className="kanban-card" onClick={() => console.log('View quotation:', q.id)}>
+                  <div key={q.id} className="kanban-card" onClick={() => setActiveQuotationId(q.id)}>
                     <div className="kanban-card-title">{q.customer_name || 'Unknown Customer'}</div>
                     <div className="kanban-card-subtitle">{q.code}</div>
                     {q.risk_label && (
@@ -88,6 +90,17 @@ export default function QuotationsPage({ startCreatingNew, clearIntent }) {
             setIsCreatingNew(false);
             fetchQuotations();
           }} 
+        />
+      )}
+
+      {activeQuotationId && (
+        <QuotationDetail
+          quotationId={activeQuotationId}
+          onClose={() => setActiveQuotationId(null)}
+          onSuccess={() => {
+            setActiveQuotationId(null);
+            fetchQuotations();
+          }}
         />
       )}
     </section>

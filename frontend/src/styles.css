@@ -1436,3 +1436,39 @@ header.builder-header h2 {
   text-align: center;
 }
 
+
+/* MOCKUP UI STYLES */
+.mockup-page-container { background: #fff; padding: 2rem; border: 1px solid #ccc; border-radius: 4px; margin-top: 1rem; }
+.mockup-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem; }
+.mockup-subtitle { font-size: 0.9rem; color: #666; margin-bottom: 1.5rem; }
+.mockup-actions { display: flex; gap: 1rem; margin-bottom: 2rem; }
+.btn-blue { background: #1976d2; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-blue:hover { background: #1565c0; }
+.btn-outline-blue { background: transparent; color: #1976d2; border: 2px solid #1976d2; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-outline-blue:hover { background: rgba(25, 118, 210, 0.05); }
+.mockup-summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+.mockup-summary-card { border: 1px solid #555; border-radius: 16px; padding: 1.5rem; background: #f8f9fa; }
+.mockup-summary-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: normal; }
+.mockup-summary-card p { margin: 0; font-size: 0.85rem; color: #555; }
+.mockup-section-title { color: #1976d2; border: 1px solid #1976d2; border-radius: 8px; padding: 0.4rem 1rem; display: inline-block; font-weight: bold; margin-bottom: 1rem; }
+.mockup-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; }
+.mockup-table th, .mockup-table td { padding: 0.75rem 1rem; text-align: left; font-size: 0.85rem; }
+.mockup-table th { background: #e9ecef; font-weight: normal; color: #555; border-bottom: 1px solid #ccc; }
+.mockup-table td { border-bottom: 1px solid #eee; }
+.mockup-table tbody tr:hover { background: #f8f9fa; cursor: pointer; }
+.mockup-alert-yellow { background: #fff9c4; border: 1px solid #555; border-radius: 8px; padding: 1rem; font-size: 0.85rem; color: #333; margin-top: 1rem; }
+.mockup-details-section { border: 1px solid #b3d4fc; border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; background: #f8fbff; }
+.mockup-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.mockup-field-row { display: flex; align-items: center; margin-bottom: 1rem; justify-content: space-between; gap: 1rem; }
+.mockup-field-row label { flex: 0 0 120px; margin: 0; font-weight: normal; color: #333; }
+.mockup-field-row input, .mockup-field-row select { flex: 1; border: 1px solid #555; border-radius: 4px; padding: 0.5rem; }
+.mockup-field-hint { font-size: 0.75rem; color: #666; margin-left: 0.5rem; max-width: 150px; }
+.mockup-split-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+.mockup-split-tables .mockup-table { margin-bottom: 0; }
+.mockup-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.mockup-modal { background: #fff; padding: 2rem; border-radius: 8px; width: 500px; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.mockup-modal h3 { margin-top: 0; margin-bottom: 1.5rem; }
+.mockup-modal .form-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
+.mockup-modal .mockup-field-row { display: flex; align-items: center; margin-bottom: 1rem; justify-content: space-between; gap: 1rem; }
+.mockup-modal .mockup-field-row label { flex: 0 0 120px; margin: 0; font-weight: normal; color: #333; }
+.mockup-modal .mockup-field-row input, .mockup-modal .mockup-field-row select { flex: 1; border: 1px solid #555; border-radius: 4px; padding: 0.5rem; }

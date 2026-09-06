@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool, query } from '../db.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 import { calculateBlendedRisk } from '../utils/blendedRiskScore.js';
+import { generateBillingForQuotation } from './billing.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -25,7 +26,7 @@ router.get('/', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-router.post('/', requireRoles('sales_rep'), async (req, res, next) => {
+router.post('/', requireRoles('sales_rep', 'sales_manager', 'admin'), async (req, res, next) => {
   try {
     const { customerId, priceListId = null } = req.body;
     const customer = (await query('SELECT id FROM customers WHERE id = $1', [customerId])).rows[0];
@@ -45,7 +46,7 @@ router.get('/:id', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-router.post('/:id/lines', requireRoles('sales_rep'), async (req, res, next) => {
+router.post('/:id/lines', requireRoles('sales_rep', 'sales_manager', 'admin'), async (req, res, next) => {
   try {
     const quotation = await loadQuotation(req.params.id, req.user);
     if (!quotation || quotation.status !== 'Draft') return res.status(404).json({ message: 'Editable draft quotation not found.' });
@@ -60,7 +61,51 @@ router.post('/:id/lines', requireRoles('sales_rep'), async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-router.post('/:id/submit', requireRoles('sales_rep'), async (req, res, next) => {
+router.patch('/:id/lines/:lineId', requireRoles('sales_rep', 'sales_manager', 'admin'), async (req, res, next) => {
+  try {
+    const quotation = await loadQuotation(req.params.id, req.user);
+    if (!quotation || quotation.status !== 'Draft') return res.status(404).json({ message: 'Editable draft quotation not found.' });
+    
+    const { quantity, discountPercent } = req.body;
+    
+    const existingLine = (await query('SELECT * FROM quotation_lines WHERE id = $1 AND quotation_id = $2', [req.params.lineId, req.params.id])).rows[0];
+    if (!existingLine) return res.status(404).json({ message: 'Quotation line not found.' });
+
+    const product = (await query('SELECT p.*, c.tier FROM products p JOIN customers c ON c.id = $2 WHERE p.id = $1', [existingLine.product_id, quotation.customer_id])).rows[0];
+    const newQty = quantity !== undefined ? Number(quantity) : existingLine.quantity;
+    const newDiscount = discountPercent !== undefined ? Number(discountPercent) : existingLine.discount_percent;
+
+    if (newQty < 1 || newDiscount < 0 || newDiscount > 100) return res.status(400).json({ message: 'Invalid quantity or discount.' });
+
+    const ceiling = (await query('SELECT max_discount_percent FROM discount_tier_ceilings WHERE tier = $1 AND category = $2', [product.tier, product.category])).rows[0];
+    const allowedLimit = Number(ceiling?.max_discount_percent || 0);
+    const overLimitPoints = Math.max(0, newDiscount - allowedLimit);
+    const lineStatus = newDiscount > allowedLimit ? 'OVER' : 'OK';
+
+    const line = (await query(
+      `UPDATE quotation_lines SET quantity = $1, discount_percent = $2, over_limit_points = $3, line_status = $4 WHERE id = $5 RETURNING *`,
+      [newQty, newDiscount, overLimitPoints, lineStatus, req.params.lineId]
+    )).rows[0];
+    
+    await query('UPDATE quotations SET last_activity_at = now() WHERE id = $1', [req.params.id]);
+    return res.json({ line });
+  } catch (error) { return next(error); }
+});
+
+router.delete('/:id/lines/:lineId', requireRoles('sales_rep', 'sales_manager', 'admin'), async (req, res, next) => {
+  try {
+    const quotation = await loadQuotation(req.params.id, req.user);
+    if (!quotation || quotation.status !== 'Draft') return res.status(404).json({ message: 'Editable draft quotation not found.' });
+    
+    const result = await query('DELETE FROM quotation_lines WHERE id = $1 AND quotation_id = $2 RETURNING *', [req.params.lineId, req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ message: 'Quotation line not found.' });
+    
+    await query('UPDATE quotations SET last_activity_at = now() WHERE id = $1', [req.params.id]);
+    return res.json({ message: 'Line deleted' });
+  } catch (error) { return next(error); }
+});
+
+router.post('/:id/submit', requireRoles('sales_rep', 'sales_manager', 'admin'), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -72,7 +117,13 @@ router.post('/:id/submit', requireRoles('sales_rep'), async (req, res, next) => 
     const risk = calculateBlendedRisk(lines, rules);
     const status = risk.requiresManager || risk.requiresFinance ? 'Pending Approval' : 'Approved';
     const updated = (await client.query('UPDATE quotations SET status = $1, blended_risk_score = $2, risk_label = $3, last_activity_at = now() WHERE id = $4 RETURNING *', [status, risk.score, risk.riskLabel, req.params.id])).rows[0];
-    if (status === 'Pending Approval') await client.query('INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage) VALUES ($1, $2, $3, $4)', [updated.id, risk.requiresManager, risk.requiresFinance, risk.requiresManager ? 'Sales Manager' : 'Finance']);
+    if (status === 'Pending Approval') {
+      const approvalResult = await client.query('INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage) VALUES ($1, $2, $3, $4) RETURNING id', [updated.id, risk.requiresManager, risk.requiresFinance, risk.requiresManager ? 'Sales Manager' : 'Finance']);
+      await client.query('INSERT INTO approval_audit_log (approval_id, user_id, action, note) VALUES ($1, $2, $3, $4)', [approvalResult.rows[0].id, req.user.id, 'Submitted', 'Initial submission for approval']);
+    } else if (status === 'Approved') {
+      await client.query("INSERT INTO fulfillment_orders (quotation_id, status) VALUES ($1, 'Split Pending')", [updated.id]);
+      await generateBillingForQuotation(client, updated.id);
+    }
     await client.query('COMMIT');
     return res.json({ quotation: updated, risk });
   } catch (error) { await client.query('ROLLBACK'); return next(error); }

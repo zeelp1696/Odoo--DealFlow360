@@ -9,7 +9,9 @@ export function requireAuth(req, res, next) {
 
 export function requireRoles(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) return res.status(403).json({ message: 'You do not have access to this workspace.' });
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: `You do not have permission for this action (requires: ${roles.join(', ')}).` });
+    }
     return next();
   };
 }

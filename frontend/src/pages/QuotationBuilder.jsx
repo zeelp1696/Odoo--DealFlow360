@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getProducts, getCustomers } from '../api/catalogApi.js';
 import { getCeilings } from '../api/discountsApi.js';
 import { createQuotation, addLine, submitForApproval } from '../api/quotationsApi.js';
+import { apiPost } from '../api/client.js';
 
 export default function QuotationBuilder({ onClose, onSuccess }) {
   const [customers, setCustomers] = useState([]);
@@ -46,6 +47,19 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
     setCart(prev => prev.filter(item => item.product.id !== productId));
   };
 
+  const [recommendations, setRecommendations] = useState([]);
+  
+  useEffect(() => {
+    const productIds = cart.map(item => item.product.id);
+    if (productIds.length > 0) {
+      apiPost('/upsell', { productIds })
+        .then(data => setRecommendations(data.recommendations || []))
+        .catch(err => console.error(err));
+    } else {
+      setRecommendations([]);
+    }
+  }, [cart]);
+
   const calculateLine = (item) => {
     const limit = ceilings.find(c => c.tier === selectedCustomer?.tier && c.category === item.product.category)?.max_discount_percent || 0;
     const overLimit = Number(item.discountPercent) > Number(limit);
@@ -56,7 +70,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
   const cartTotal = cart.reduce((sum, item) => sum + calculateLine(item).total, 0);
   const anyOverLimit = cart.some(item => calculateLine(item).overLimit);
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (saveAsDraft = false) => {
     if (!selectedCustomerId) {
       setMessage('Please select a customer first.');
       return;
@@ -67,7 +81,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
     }
 
     setSaving(true);
-    setMessage('Creating quotation...');
+    setMessage(saveAsDraft ? 'Saving draft...' : 'Creating quotation...');
     
     try {
       const quotation = await createQuotation(selectedCustomerId);
@@ -81,13 +95,17 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
         });
       }
       
-      setMessage('Submitting for approval...');
-      await submitForApproval(quotation.id);
+      if (!saveAsDraft) {
+        setMessage('Submitting for approval...');
+        await submitForApproval(quotation.id);
+      }
       
-      if (onSuccess) onSuccess();
-      if (onClose) onClose();
+      setMessage(saveAsDraft ? 'Draft saved successfully!' : 'Quotation submitted successfully!');
+      setTimeout(() => {
+        onSuccess();
+      }, 1000);
     } catch (err) {
-      setMessage(`Error: ${err.message}`);
+      setMessage(err.message || 'An error occurred while saving.');
       setSaving(false);
     }
   };
@@ -129,6 +147,23 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            
+            {recommendations.length > 0 && (
+              <div className="builder-recommendations" style={{ marginTop: '2rem', padding: '1.5rem', background: '#f6e8bd', borderRadius: '8px' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#8c681f' }}>Recommended for this deal</h4>
+                <div className="product-list">
+                  {recommendations.map(rec => (
+                    <div key={rec.id} className="product-item" style={{ background: '#fff' }}>
+                      <div className="product-info">
+                        <strong>{rec.name} <span style={{fontSize: '0.65rem', background: '#e2b75b', color: '#17231f', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px'}}>{rec.promo_label}</span></strong>
+                        <span>${Number(rec.base_price).toLocaleString()}</span>
+                      </div>
+                      <button type="button" className="btn-gold btn-small" onClick={() => addToCart({ id: rec.id, name: rec.name, base_price: rec.base_price, category: rec.category })}>+ Add</button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -184,19 +219,29 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
             <div className="cart-footer">
               <div className="cart-totals">
                 <span>Order Total:</span>
-                <h2>${cartTotal.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}</h2>
+                <h2>${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
               </div>
               
               {message && <div className="builder-message">{message}</div>}
               
-              <button 
-                type="button"
-                className="btn-gold builder-confirm" 
-                onClick={handleConfirm} 
-                disabled={saving || cart.length === 0 || !selectedCustomerId}
-              >
-                {saving ? 'Processing...' : (anyOverLimit ? 'Submit for Approval ↗' : 'Confirm Quotation ↗')}
-              </button>
+              <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
+                <button 
+                  className="btn-outline builder-confirm" 
+                  style={{ flex: 1 }}
+                  onClick={() => handleConfirm(true)} 
+                  disabled={cart.length === 0 || !selectedCustomerId || saving}
+                >
+                  {saving ? 'Saving...' : 'Save as Draft'}
+                </button>
+                <button 
+                  className="btn-gold builder-confirm" 
+                  style={{ flex: 1 }}
+                  onClick={() => handleConfirm(false)} 
+                  disabled={cart.length === 0 || !selectedCustomerId || saving}
+                >
+                  {saving ? 'Processing...' : (anyOverLimit ? 'Submit for Approval ↗' : 'Confirm Quotation ↗')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
