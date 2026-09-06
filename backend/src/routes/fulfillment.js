@@ -189,17 +189,75 @@ router.get('/:id', requireRoles('admin', 'finance', 'sales_manager', 'sales_rep'
     if (!orderResult.rows.length) return res.status(404).json({ message: 'Fulfillment order not found' });
     const order = orderResult.rows[0];
 
-    const splitsResult = await query(`
+    const getSplitsQuery = `
       SELECT fs.*, w.name as warehouse_name
       FROM fulfillment_splits fs
       JOIN warehouses w ON w.id = fs.warehouse_id
       WHERE fs.fulfillment_order_id = $1
       ORDER BY w.name
-    `, [req.params.id]);
+    `;
+
+    let splitsResult = await query(getSplitsQuery, [req.params.id]);
+
+    if (splitsResult.rows.length === 0 && order.status === 'Split Pending') {
+      // Generate split suggestion
+      const linesRes = await query(`
+        SELECT ql.product_id, ql.quantity 
+        FROM quotation_lines ql
+        WHERE ql.quotation_id = $1
+      `, [order.quotation_id]);
+
+      const warehousesRes = await query('SELECT id, name FROM warehouses ORDER BY id ASC');
+      const warehouses = warehousesRes.rows;
+
+      if (warehouses.length > 0 && linesRes.rows.length > 0) {
+        for (const line of linesRes.rows) {
+          let remainingQty = line.quantity;
+
+          for (const wh of warehouses) {
+            if (remainingQty <= 0) break;
+
+            const stockRes = await query(
+              'SELECT in_stock, reserved FROM warehouse_stock WHERE warehouse_id = $1 AND product_id = $2',
+              [wh.id, line.product_id]
+            );
+
+            const stock = stockRes.rows[0];
+            const available = stock ? (stock.in_stock - stock.reserved) : 0;
+
+            if (available > 0) {
+              const allocate = Math.min(available, remainingQty);
+              remainingQty -= allocate;
+
+              await query(
+                'INSERT INTO fulfillment_splits (fulfillment_order_id, warehouse_id, product_id, qty_fulfilled, backorder_qty) VALUES ($1, $2, $3, $4, $5)',
+                [req.params.id, wh.id, line.product_id, allocate, 0]
+              );
+            }
+          }
+
+          if (remainingQty > 0) {
+            await query(
+              'INSERT INTO fulfillment_splits (fulfillment_order_id, warehouse_id, product_id, qty_fulfilled, backorder_qty) VALUES ($1, $2, $3, $4, $5)',
+              [req.params.id, warehouses[0].id, line.product_id, 0, remainingQty]
+            );
+          }
+        }
+      }
+      
+      splitsResult = await query(getSplitsQuery, [req.params.id]);
+    }
+
+    // Add dummy estimations for UI mockup
+    const splits = splitsResult.rows.map(s => ({
+      ...s,
+      estimated_shipments: s.backorder_qty > 0 ? 'Backorder' : 1,
+      estimated_cost: (s.qty_fulfilled * 5.00).toFixed(2)
+    }));
 
     return res.json({
       order,
-      splits: splitsResult.rows
+      splits
     });
   } catch (error) { return next(error); }
 });

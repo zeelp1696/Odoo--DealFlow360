@@ -27,7 +27,8 @@ export default function CustomerPortal({ session, user, onLogout }) {
   const [profileName, setProfileName] = useState(safeUserName);
   const [savedProfileName, setSavedProfileName] = useState(safeUserName);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const initials = user?.name ? user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   // ── Load quotes list ──────────────────────────────────────────
   const loadQuotes = () => {
     setLoading(true);
@@ -125,7 +126,7 @@ export default function CustomerPortal({ session, user, onLogout }) {
   return (
     <main className="customer-portal">
       {/* ── Header ── */}
-      <header className="portal-header">
+      <header className="portal-header" style={{ position: 'relative' }}>
         <div className="portal-brand">DF<span>360</span></div>
         <div className="portal-role">{user.name} · Customer Portal</div>
         <nav>
@@ -144,7 +145,65 @@ export default function CustomerPortal({ session, user, onLogout }) {
             onClick={() => setTab('profile')}
           >Profile</button>
         </nav>
-        <button className="portal-logout" onClick={onLogout}>Log out</button>
+        
+        <div style={{ position: 'relative', marginLeft: 'auto', flexShrink: 0 }}>
+          <button
+            onClick={() => setAvatarOpen(v => !v)}
+            title={user.name}
+            style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: '#e2b75b',
+              border: '2px solid rgba(255,255,255,0.35)',
+              color: '#17231f', fontWeight: '800', fontSize: '0.82rem',
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', letterSpacing: '0.03em',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+              transition: 'transform 0.15s',
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            {initials}
+          </button>
+          {avatarOpen && (
+            <>
+              <div
+                onClick={() => setAvatarOpen(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+              />
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                background: '#fff', border: '1px solid #e2e8f0',
+                borderRadius: '10px', boxShadow: '0 8px 28px rgba(22,68,58,0.15)',
+                minWidth: '210px', zIndex: 100, overflow: 'hidden',
+              }}>
+                <div style={{ padding: '1rem 1.1rem 0.85rem', borderBottom: '1px solid #e4e9e1', background: '#f1f4ee' }}>
+                  <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#16443a', marginBottom: '0.2rem' }}>
+                    {user.name}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '500' }}>
+                    Customer Portal
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setAvatarOpen(false); onLogout(); }}
+                  style={{
+                    width: '100%', padding: '0.75rem 1.1rem', border: 'none',
+                    background: 'transparent', textAlign: 'left', cursor: 'pointer',
+                    fontSize: '0.88rem', color: '#dc2626', fontWeight: '600',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <section className="portal-content">
