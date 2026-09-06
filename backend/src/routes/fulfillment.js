@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { query } from '../db.js';
+import { pool, query } from '../db.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth);
 
-// Get all pending fulfillment orders
-router.get('/', requireRoles('admin', 'finance'), async (_req, res, next) => {
+// Get all pending fulfillment orders (Upstream)
+router.get('/pending', requireRoles('admin', 'finance'), async (_req, res, next) => {
   try {
     const result = await query(`
       SELECT 
@@ -33,7 +33,7 @@ router.get('/', requireRoles('admin', 'finance'), async (_req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-// Run split algorithm for an order
+// Run split algorithm for an order (Upstream)
 router.post('/:id/split', requireRoles('admin', 'finance'), async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -127,6 +127,108 @@ router.post('/:id/split', requireRoles('admin', 'finance'), async (req, res, nex
     return res.json({ message: 'Split generated successfully', status: newStatus, splits });
     
   } catch (error) { return next(error); }
+});
+
+// Local GET /
+router.get('/', requireRoles('admin', 'finance'), async (req, res, next) => {
+  try {
+    // 1. Fetch Stock
+    const stockResult = await query(`
+      SELECT ws.id, w.name as warehouse_name, p.name as product_name, 
+             ws.in_stock, ws.reserved, (ws.in_stock - ws.reserved) as available
+      FROM warehouse_stock ws
+      JOIN warehouses w ON w.id = ws.warehouse_id
+      JOIN products p ON p.id = ws.product_id
+      ORDER BY w.name, p.name
+    `);
+
+    // 2. Fetch Orders Awaiting Fulfillment
+    // We group by fulfillment order to aggregate warehouses
+    const ordersResult = await query(`
+      SELECT fo.id, fo.status, q.code as quotation_code, c.name as customer_name,
+             STRING_AGG(DISTINCT w.name, ' + ') as warehouses
+      FROM fulfillment_orders fo
+      JOIN quotations q ON q.id = fo.quotation_id
+      JOIN customers c ON c.id = q.customer_id
+      LEFT JOIN fulfillment_splits fs ON fs.fulfillment_order_id = fo.id
+      LEFT JOIN warehouses w ON w.id = fs.warehouse_id
+      WHERE fo.status != 'Fulfilled'
+      GROUP BY fo.id, fo.status, q.code, c.name
+      ORDER BY fo.id DESC
+    `);
+
+    return res.json({
+      stock: stockResult.rows,
+      orders: ordersResult.rows
+    });
+  } catch (error) { return next(error); }
+});
+
+router.get('/:id', requireRoles('admin', 'finance'), async (req, res, next) => {
+  try {
+    const orderResult = await query(`
+      SELECT fo.*, q.code as quotation_code, c.name as customer_name
+      FROM fulfillment_orders fo
+      JOIN quotations q ON q.id = fo.quotation_id
+      JOIN customers c ON c.id = q.customer_id
+      WHERE fo.id = $1
+    `, [req.params.id]);
+
+    if (!orderResult.rows.length) return res.status(404).json({ message: 'Fulfillment order not found' });
+    const order = orderResult.rows[0];
+
+    const splitsResult = await query(`
+      SELECT fs.*, w.name as warehouse_name
+      FROM fulfillment_splits fs
+      JOIN warehouses w ON w.id = fs.warehouse_id
+      WHERE fs.fulfillment_order_id = $1
+      ORDER BY w.name
+    `, [req.params.id]);
+
+    return res.json({
+      order,
+      splits: splitsResult.rows
+    });
+  } catch (error) { return next(error); }
+});
+
+router.patch('/:id', requireRoles('admin', 'finance'), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { action, manualSplits } = req.body;
+    await client.query('BEGIN');
+    
+    const order = (await client.query('SELECT * FROM fulfillment_orders WHERE id = $1 FOR UPDATE', [req.params.id])).rows[0];
+    if (!order) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Order not found' }); }
+
+    if (action === 'accept_suggested' || action === 'manual_override') {
+      let isManual = action === 'manual_override';
+      
+      if (isManual && manualSplits && Array.isArray(manualSplits)) {
+        for (const split of manualSplits) {
+          await client.query(
+            'UPDATE fulfillment_splits SET qty_fulfilled = $1, is_manual_override = true WHERE id = $2 AND fulfillment_order_id = $3',
+            [split.qty, split.id, req.params.id]
+          );
+        }
+      } else {
+        await client.query(
+          'UPDATE fulfillment_splits SET is_manual_override = false WHERE fulfillment_order_id = $1',
+          [req.params.id]
+        );
+      }
+
+      await client.query('UPDATE fulfillment_orders SET status = $1 WHERE id = $2', ['Processing', req.params.id]);
+    }
+    
+    await client.query('COMMIT');
+    return res.json({ message: 'Fulfillment updated successfully' });
+  } catch (error) { 
+    await client.query('ROLLBACK'); 
+    return next(error); 
+  } finally { 
+    client.release(); 
+  }
 });
 
 export default router;

@@ -17,11 +17,46 @@ router.get('/', requireRoles('admin', 'sales_manager', 'finance'), async (req, r
       JOIN quotations q ON q.id = a.quotation_id
       JOIN customers c ON c.id = q.customer_id
       JOIN users u ON u.id = q.rep_id
-      WHERE a.status = 'Pending'
-        AND ($1 = 'admin' OR ($1 = 'sales_manager' AND a.current_stage = 'Sales Manager') OR ($1 = 'finance' AND a.current_stage = 'Finance'))
-      ORDER BY a.created_at ASC
+      WHERE ($1 = 'admin' OR ($1 = 'sales_manager' AND a.current_stage = 'Sales Manager') OR ($1 = 'finance' AND a.current_stage = 'Finance'))
+      ORDER BY a.created_at DESC
     `, [req.user.role]);
     return res.json({ approvals: result.rows });
+  } catch (error) { return next(error); }
+});
+
+router.get('/:id', requireRoles('admin', 'sales_manager', 'finance'), async (req, res, next) => {
+  try {
+    const approval = (await query(`
+      SELECT a.id, a.quotation_id, a.requires_manager, a.requires_finance,
+             a.current_stage, a.status, a.created_at, q.code, q.status AS quotation_status,
+             q.blended_risk_score, q.risk_label, c.name AS customer_name, c.tier AS customer_tier,
+             u.name AS rep_name
+      FROM approvals a
+      JOIN quotations q ON q.id = a.quotation_id
+      JOIN customers c ON c.id = q.customer_id
+      JOIN users u ON u.id = q.rep_id
+      WHERE a.id = $1
+    `, [req.params.id])).rows[0];
+
+    if (!approval) return res.status(404).json({ message: 'Approval not found.' });
+
+    const lines = (await query(`
+      SELECT ql.*, p.name AS product_name, p.category 
+      FROM quotation_lines ql 
+      JOIN products p ON p.id = ql.product_id 
+      WHERE ql.quotation_id = $1 AND ql.line_status = 'OVER'
+      ORDER BY ql.id
+    `, [approval.quotation_id])).rows;
+
+    const audit_logs = (await query(`
+      SELECT l.*, u.name AS user_name
+      FROM approval_audit_log l
+      JOIN users u ON u.id = l.user_id
+      WHERE l.approval_id = $1
+      ORDER BY l.created_at ASC
+    `, [req.params.id])).rows;
+
+    return res.json({ approval, lines, audit_logs });
   } catch (error) { return next(error); }
 });
 

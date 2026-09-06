@@ -70,7 +70,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
   const cartTotal = cart.reduce((sum, item) => sum + calculateLine(item).total, 0);
   const anyOverLimit = cart.some(item => calculateLine(item).overLimit);
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (saveAsDraft = false) => {
     if (!selectedCustomerId) {
       setMessage('Please select a customer first.');
       return;
@@ -81,7 +81,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
     }
 
     setSaving(true);
-    setMessage('Creating quotation...');
+    setMessage(saveAsDraft ? 'Saving draft...' : 'Creating quotation...');
     
     try {
       const quotation = await createQuotation(selectedCustomerId);
@@ -95,13 +95,17 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
         });
       }
       
-      setMessage('Submitting for approval...');
-      await submitForApproval(quotation.id);
+      if (!saveAsDraft) {
+        setMessage('Submitting for approval...');
+        await submitForApproval(quotation.id);
+      }
       
-      if (onSuccess) onSuccess();
-      if (onClose) onClose();
+      setMessage(saveAsDraft ? 'Draft saved successfully!' : 'Quotation submitted successfully!');
+      setTimeout(() => {
+        onSuccess();
+      }, 1000);
     } catch (err) {
-      setMessage(`Error: ${err.message}`);
+      setMessage(err.message || 'An error occurred while saving.');
       setSaving(false);
     }
   };
@@ -215,19 +219,29 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
             <div className="cart-footer">
               <div className="cart-totals">
                 <span>Order Total:</span>
-                <h2>${cartTotal.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}</h2>
+                <h2>${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
               </div>
               
               {message && <div className="builder-message">{message}</div>}
               
-              <button 
-                type="button"
-                className="btn-gold builder-confirm" 
-                onClick={handleConfirm} 
-                disabled={saving || cart.length === 0 || !selectedCustomerId}
-              >
-                {saving ? 'Processing...' : (anyOverLimit ? 'Submit for Approval ↗' : 'Confirm Quotation ↗')}
-              </button>
+              <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
+                <button 
+                  className="btn-outline builder-confirm" 
+                  style={{ flex: 1 }}
+                  onClick={() => handleConfirm(true)} 
+                  disabled={cart.length === 0 || !selectedCustomerId || saving}
+                >
+                  {saving ? 'Saving...' : 'Save as Draft'}
+                </button>
+                <button 
+                  className="btn-gold builder-confirm" 
+                  style={{ flex: 1 }}
+                  onClick={() => handleConfirm(false)} 
+                  disabled={cart.length === 0 || !selectedCustomerId || saving}
+                >
+                  {saving ? 'Processing...' : (anyOverLimit ? 'Submit for Approval ↗' : 'Confirm Quotation ↗')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
