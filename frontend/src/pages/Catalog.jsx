@@ -70,7 +70,6 @@ export default function Catalog({ user }) {
         {user.role === 'admin' && (
           <button className="btn-gold" onClick={openAddProductModal}>+ New Product</button>
         )}
-        <button className="ghost" onClick={() => alert('Manage Price fields configuration panel opened.')}>Manage Price fields</button>
       </div>
       
       {showAddProduct && (
@@ -135,9 +134,9 @@ export default function Catalog({ user }) {
               
               {productMessage && <div className="form-message" style={{marginTop: '1rem'}}>{productMessage}</div>}
               
-              <div className="form-actions" style={{ display: 'flex', gap: '1rem' }}>
-                <button type="submit" className="btn-gold" style={{ flex: 1, height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', border: '1px solid transparent' }}>Save Product</button>
-                <button type="button" className="ghost" style={{ flex: 1, height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', marginTop: 0 }} onClick={() => setShowAddProduct(false)}>Cancel</button>
+              <div className="form-actions" style={{ display: 'flex', flexDirection: 'row', gap: '1rem', width: '100%', marginTop: '1.5rem' }}>
+                <button type="submit" className="btn-gold" style={{ flex: 1, height: '42px', boxSizing: 'border-box' }}>Save Product</button>
+                <button type="button" className="ghost" style={{ flex: 1, height: '42px', boxSizing: 'border-box', borderRadius: '8px' }} onClick={() => setShowAddProduct(false)}>Cancel</button>
               </div>
             </form>
           </div>

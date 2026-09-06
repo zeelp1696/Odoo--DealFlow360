@@ -10,7 +10,7 @@ async function getDashboardStats() {
       query("SELECT COUNT(*) FROM approvals WHERE status = 'Pending'"),
       query("SELECT COUNT(*) FROM quotations WHERE status NOT IN ('Confirmed', 'Rejected')"),
       query("SELECT COUNT(DISTINCT quotation_id) FROM quotation_lines WHERE over_limit_points > 0 AND quotation_id IN (SELECT id FROM quotations WHERE status NOT IN ('Confirmed', 'Rejected'))"),
-      query("SELECT 'Quotation ' || code || ' updated to ' || status AS action, last_activity_at AS timestamp FROM quotations ORDER BY last_activity_at DESC NULLS LAST, created_at DESC LIMIT 3")
+      query("SELECT 'Quotation ' || q.code || ' for ' || c.name || ' is now ' || q.status AS action, q.last_activity_at AS timestamp FROM quotations q JOIN customers c ON q.customer_id = c.id ORDER BY q.last_activity_at DESC NULLS LAST, q.created_at DESC LIMIT 5")
     ]);
 
     return {
@@ -27,7 +27,7 @@ async function getDashboardStats() {
 
 router.get('/admin', requireAuth, requireRoles('admin'), async (_req, res) => {
   const stats = await getDashboardStats();
-  res.json({ title: 'Admin control room', actions: ['Products', 'Discount rules', 'Approval chains', 'Warehouses'], stats });
+  res.json({ title: 'Admin control room', actions: ['Products', 'Discount rules', 'Approval chains', 'Warehouses', 'Reports'], stats });
 });
 
 router.get('/sales', requireAuth, requireRoles('sales_rep', 'sales_manager'), async (_req, res) => {
@@ -37,7 +37,7 @@ router.get('/sales', requireAuth, requireRoles('sales_rep', 'sales_manager'), as
 
 router.get('/operations', requireAuth, requireRoles('finance', 'sales_manager'), async (_req, res) => {
   const stats = await getDashboardStats();
-  res.json({ title: 'Operations workspace', actions: ['Approval queue', 'Fulfillment', 'Invoices', 'Payments'], stats });
+  res.json({ title: 'Operations workspace', actions: ['Approval queue', 'Fulfillment', 'Invoices', 'Subscriptions', 'Payments'], stats });
 });
 
 router.get('/customer', requireAuth, requireRoles('customer'), (_req, res) => {

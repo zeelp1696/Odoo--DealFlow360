@@ -10,13 +10,18 @@ import QuotationsPage from './pages/QuotationsPage.jsx';
 import QuotationBuilder from './pages/QuotationBuilder.jsx';
 import Catalog from './pages/Catalog.jsx';
 import Governance from './pages/Governance.jsx';
+import Fulfillment from './pages/Fulfillment.jsx';
+import Subscriptions from './pages/Subscriptions.jsx';
+import Billing from './pages/Billing.jsx';
+import DealHealth from './pages/DealHealth.jsx';
+import Reports from './pages/Reports.jsx';
 import CustomerPortal from './components/CustomerPortal.jsx';
 
 const API = 'http://localhost:4000/api';
 const AuthContext = createContext(null);
 const workspaceFor = { admin: 'admin', sales_rep: 'sales', sales_manager: 'sales', finance: 'operations', customer: 'customer' };
 const roleLabels = { admin: 'Platform Admin', sales_rep: 'Sales Rep', sales_manager: 'Sales Manager', finance: 'Finance & Operations', customer: 'Customer Portal' };
-const dataModules = new Set(['inventory', 'fulfillment', 'subscriptions', 'billing', 'negotiation', 'deal-health', 'reports', 'upsell', 'administration', 'orders', 'support']);
+const dataModules = new Set(['inventory', 'negotiation', 'upsell', 'administration', 'orders', 'support', 'payments']);
 
 function clearStoredSession() { try { window.localStorage.removeItem('dealflow-session'); } catch { /* Browser storage may be blocked. */ } }
 function readStoredSession() { try { const stored = window.localStorage.getItem('dealflow-session'); return stored ? JSON.parse(stored) : null; } catch { clearStoredSession(); return null; } }
@@ -35,15 +40,17 @@ function Dashboard() {
   const [createQuotationIntent, setCreateQuotationIntent] = useState(false);
   
   useEffect(() => { 
-    fetch(`${API}/workspaces/${workspace}`, { headers })
-      .then(async response => { 
-        const body = await response.json(); 
-        if (!response.ok) throw new Error(body.message || 'Workspace could not be loaded.'); 
-        return body; 
-      })
-      .then(setData)
-      .catch(error => console.error(error.message)); 
-  }, [workspace, session.token]);
+    if (activeModule === 'overview') {
+      fetch(`${API}/workspaces/${workspace}`, { headers })
+        .then(async response => { 
+          const body = await response.json(); 
+          if (!response.ok) throw new Error(body.message || 'Workspace could not be loaded.'); 
+          return body; 
+        })
+        .then(setData)
+        .catch(error => console.error(error.message)); 
+    }
+  }, [workspace, session.token, activeModule]);
 
   if (user.role === 'customer') {
     return <CustomerPortal session={session} user={user} onLogout={logout} />;
@@ -74,8 +81,15 @@ function Dashboard() {
     {activeModule === 'quotations' && <QuotationsPage startCreatingNew={createQuotationIntent} clearIntent={() => setCreateQuotationIntent(false)} />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
     {activeModule === 'approvals' && ['admin', 'sales_manager', 'finance'].includes(user.role) && <ApprovalQueue session={session} />}
+    {activeModule === 'fulfillment' && <Fulfillment user={user} />}
     {activeModule === 'catalog' && <Catalog user={user} />}
-    {activeModule === 'governance' && <Governance user={user} />}</div></main>;
+    {activeModule === 'governance' && <Governance user={user} />}
+    {activeModule === 'billing' && <Billing />}
+    {activeModule === 'subscriptions' && <Subscriptions />}
+    {activeModule === 'deal health' && <DealHealth />}
+    {activeModule === 'reports' && <Reports />}
+    {createQuotationIntent && <QuotationBuilder onClose={() => setCreateQuotationIntent(false)} />}
+    </div></main>;
 }
 
 function App() { const { session, login } = useContext(AuthContext); return session ? <Dashboard /> : <LoginForm onLogin={login} />; }
