@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
+import xlsx from 'xlsx';
+import PDFDocument from 'pdfkit';
 
 const router = Router();
 router.use(requireAuth);
@@ -124,10 +126,11 @@ router.get('/', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-// GET /api/reports/export — returns raw data for CSV/XLS download
-router.get('/export', async (req, res, next) => {
+// GET /api/reports/export/:type — returns raw data for CSV/XLS/PDF download
+router.get('/export/:type', async (req, res, next) => {
   try {
-    const { format = 'csv', period, product } = req.query;
+    const { period, product } = req.query;
+    const type = req.params.type;
 
     let dateFilter = '';
     if (period === 'this_month') dateFilter = `AND q.created_at >= date_trunc('month', now())`;
@@ -147,18 +150,54 @@ router.get('/export', async (req, res, next) => {
 
     const rows = result.rows;
     const headers = ['Quotation Code', 'Customer', 'Status', 'Risk Label', 'Blended Score', 'Rep Name', 'Created Date'];
-    const csvRows = [
-      headers.join(','),
-      ...rows.map(r => [
-        r.code, r.customer, r.status, r.risk_label || '', r.blended_risk_score || '',
-        r.rep_name, r.created_date
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-    ];
-    const csv = csvRows.join('\n');
-
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="dealflow360-report-${new Date().toISOString().slice(0, 10)}.csv"`);
-    return res.send(csv);
+    
+    if (type === 'csv') {
+      const csvRows = [
+        headers.join(','),
+        ...rows.map(r => [
+          r.code, r.customer, r.status, r.risk_label || '', r.blended_risk_score || '',
+          r.rep_name, r.created_date
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      ];
+      const csv = csvRows.join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="dealflow360-report.csv"`);
+      return res.send(csv);
+    } else if (type === 'xlsx') {
+      const worksheet = xlsx.utils.json_to_sheet(rows.map(r => ({
+        'Quotation Code': r.code,
+        'Customer': r.customer,
+        'Status': r.status,
+        'Risk Label': r.risk_label || '',
+        'Blended Score': r.blended_risk_score || '',
+        'Rep Name': r.rep_name,
+        'Created Date': r.created_date
+      })));
+      const workbook = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(workbook, worksheet, 'Quotations');
+      const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="dealflow360-report.xlsx"`);
+      return res.send(buffer);
+    } else if (type === 'pdf') {
+      const doc = new PDFDocument({ margin: 30, size: 'A4' });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="dealflow360-report.pdf"`);
+      doc.pipe(res);
+      
+      doc.fontSize(20).text('DealFlow360 Quotations Report', { align: 'center' });
+      doc.moveDown();
+      
+      rows.forEach(r => {
+        doc.fontSize(12).text(`Code: ${r.code} | Customer: ${r.customer} | Status: ${r.status}`);
+        doc.fontSize(10).text(`Rep: ${r.rep_name} | Date: ${r.created_date}`);
+        doc.moveDown();
+      });
+      
+      doc.end();
+    } else {
+      res.status(400).json({ message: 'Invalid export type' });
+    }
   } catch (error) { return next(error); }
 });
 

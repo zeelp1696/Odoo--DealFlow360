@@ -91,11 +91,11 @@ export default function ReportsPage({ user }) {
     try {
       const session = JSON.parse(localStorage.getItem('dealflow-session') || '{}');
       const token = session.token;
-      const params = new URLSearchParams({ format });
+      const params = new URLSearchParams();
       if (filters.period) params.append('period', filters.period);
       if (filters.product) params.append('product', filters.product);
 
-      const response = await fetch(`${BASE_URL}/reports/export?${params.toString()}`, {
+      const response = await fetch(`${BASE_URL}/reports/export/${format}?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -105,7 +105,7 @@ export default function ReportsPage({ user }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dealflow360-report-${new Date().toISOString().slice(0, 10)}.${format === 'pdf' ? 'pdf' : 'csv'}`;
+      a.download = `dealflow360-report-${new Date().toISOString().slice(0, 10)}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -289,16 +289,26 @@ export default function ReportsPage({ user }) {
             <button
               onClick={() => handleExport('csv')}
               disabled={isExporting}
-              style={{ padding: '0.65rem 1.5rem', border: '2px solid #3b82f6', borderRadius: '6px', background: '#3b82f6', color: '#fff', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem', opacity: isExporting ? 0.6 : 1, transition: 'all 0.15s' }}
+              className="btn-gold"
+              style={{ opacity: isExporting ? 0.6 : 1, border: 'none', padding: '0.65rem 1.5rem', fontWeight: '600' }}
             >
               {isExporting ? 'Exporting...' : 'Export CSV'}
             </button>
             <button
-              onClick={() => handleExport('xls')}
+              onClick={() => handleExport('xlsx')}
               disabled={isExporting}
-              style={{ padding: '0.65rem 1.5rem', border: '2px solid #1d4ed8', borderRadius: '6px', background: '#fff', color: '#1d4ed8', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem', opacity: isExporting ? 0.6 : 1, transition: 'all 0.15s' }}
+              className="btn-gold"
+              style={{ opacity: isExporting ? 0.6 : 1, border: 'none', padding: '0.65rem 1.5rem', fontWeight: '600' }}
             >
               Export XLS
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              disabled={isExporting}
+              className="btn-gold"
+              style={{ opacity: isExporting ? 0.6 : 1, border: 'none', padding: '0.65rem 1.5rem', fontWeight: '600' }}
+            >
+              Export PDF
             </button>
           </div>
         </>

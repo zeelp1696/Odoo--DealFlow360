@@ -22,12 +22,13 @@ import SubscriptionsPage from './pages/SubscriptionsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import DealHealthPage from './pages/DealHealthPage.jsx';
 import InvoicesPage from './pages/InvoicesPage.jsx';
+import Administration from './pages/Administration.jsx';
 
 const API = 'http://localhost:4000/api';
 const AuthContext = createContext(null);
 const workspaceFor = { admin: 'admin', sales_rep: 'sales', sales_manager: 'sales', finance: 'operations', customer: 'customer' };
 const roleLabels = { admin: 'Platform Admin', sales_rep: 'Sales Rep', sales_manager: 'Sales Manager', finance: 'Finance & Operations', customer: 'Customer Portal' };
-const dataModules = new Set(['inventory', 'negotiation', 'upsell', 'administration', 'orders', 'support', 'payments']);
+const dataModules = new Set(['inventory', 'negotiation', 'upsell', 'orders', 'support', 'payments']);
 
 function clearStoredSession() { try { window.localStorage.removeItem('dealflow-session'); } catch { /* Browser storage may be blocked. */ } }
 function readStoredSession() { try { const stored = window.localStorage.getItem('dealflow-session'); return stored ? JSON.parse(stored) : null; } catch { clearStoredSession(); return null; } }
@@ -91,6 +92,7 @@ function Dashboard() {
     {activeModule === 'reports' && <ReportsPage user={user} />}
     {activeModule === 'deal-health' && <DealHealthPage />}
     {activeModule === 'billing' && <InvoicesPage />}
+    {activeModule === 'administration' && <Administration user={user} />}
     {dataModules.has(activeModule) && <ModulePanel session={session} module={activeModule} />}
     {activeModule === 'catalog' && <Catalog user={user} />}
     {activeModule === 'governance' && <Governance user={user} />}

@@ -19,6 +19,7 @@ import subscriptionRoutes from './routes/subscriptions.js';
 import reportsRoutes from './routes/reports.js';
 import dealHealthRoutes from './routes/deal-health.js';
 import invoicesRoutes from './routes/invoices.js';
+import administrationRoutes from './routes/administration.js';
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -42,5 +43,6 @@ app.use('/api/upsell', upsellRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/health2', healthRoutes);
+app.use('/api/administration', administrationRoutes);
 app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ message: 'Unexpected server error.' }); });
 app.listen(port, () => console.log(`DealFlow360 API listening on http://localhost:${port}`));
