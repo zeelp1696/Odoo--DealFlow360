@@ -10,7 +10,7 @@ const standardInternal = [
 ];
 
 export const navigationByRole = {
-  admin: [...standardInternal, ['catalog', 'Product Catalog'], ['governance', 'Discount Rules']],
+  admin: [...standardInternal, ['catalog', 'Product Catalog'], ['governance', 'Discount Rules'], ['administration', 'Administration']],
   sales_rep: standardInternal,
   sales_manager: standardInternal,
   finance: standardInternal,

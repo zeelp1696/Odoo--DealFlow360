@@ -18,23 +18,25 @@ export default function Reports() {
       });
   }, []);
 
-  const handleExportCSV = () => {
-    // Standard approach to trigger a browser file download from an authenticated API endpoint
+  const handleExport = (type) => {
     const token = JSON.parse(localStorage.getItem('dealflow-session'))?.token;
-    fetch('http://localhost:4000/api/reports/export', {
+    fetch(`http://localhost:4000/api/reports/export/${type}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(response => response.blob())
+    .then(response => {
+      if (!response.ok) throw new Error('Export failed');
+      return response.blob();
+    })
     .then(blob => {
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'quotations_export.csv');
+      link.setAttribute('download', `quotations_export.${type}`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
     })
-    .catch(err => alert('Failed to export CSV: ' + err.message));
+    .catch(err => alert(`Failed to export ${type.toUpperCase()}: ` + err.message));
   };
 
   if (loading) return <div style={{ padding: '2rem' }}>Loading reports...</div>;
@@ -45,14 +47,28 @@ export default function Reports() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div className="mockup-title">Reporting & Audit Log</div>
-          <div className="mockup-subtitle">View system actions and export quotation data to CSV.</div>
+          <div className="mockup-subtitle">View system actions and export quotation data.</div>
         </div>
-        <button className="btn-gold" onClick={handleExportCSV}>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-          </svg>
-          Export Quotes (CSV)
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn-gold" onClick={() => handleExport('csv')}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export CSV
+          </button>
+          <button className="btn-gold" onClick={() => handleExport('xlsx')}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export XLS
+          </button>
+          <button className="btn-gold" onClick={() => handleExport('pdf')}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Export PDF
+          </button>
+        </div>
       </div>
 
       <div className="mockup-card" style={{ marginTop: '2rem' }}>
