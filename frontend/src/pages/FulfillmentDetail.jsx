@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getFulfillmentDetail, updateFulfillment } from '../api/fulfillmentApi.js';
 
-export default function FulfillmentDetail({ fulfillmentId, onClose, onSuccess }) {
+export default function FulfillmentDetail({ fulfillmentId, onClose, onSuccess, user }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -123,35 +123,37 @@ export default function FulfillmentDetail({ fulfillmentId, onClose, onSuccess })
         </div>
 
         {/* Footer Actions */}
-        <div className="portal-actions" style={{ padding: '1.5rem 2rem', borderTop: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', gap: '1rem', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', flexShrink: 0 }}>
-          
-          {isManualOverride ? (
-             <button 
-               onClick={() => handleAction('manual_override')} 
-               disabled={isSubmitting}
-               style={{ background: '#3b82f6', color: 'white', padding: '0.6rem 1.5rem', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
-             >
-               Save Manual Split
-             </button>
-          ) : (
-             <button 
-               onClick={() => handleAction('accept_suggested')} 
-               disabled={isSubmitting}
-               style={{ background: '#1d4ed8', color: 'white', padding: '0.6rem 1.5rem', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
-             >
-               Accept Suggested Split
-             </button>
-          )}
+        {user?.role !== 'sales_rep' && (
+          <div className="portal-actions" style={{ padding: '1.5rem 2rem', borderTop: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', gap: '1rem', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', flexShrink: 0 }}>
+            
+            {isManualOverride ? (
+               <button 
+                 onClick={() => handleAction('manual_override')} 
+                 disabled={isSubmitting}
+                 style={{ background: '#3b82f6', color: 'white', padding: '0.6rem 1.5rem', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
+               >
+                 Save Manual Split
+               </button>
+            ) : (
+               <button 
+                 onClick={() => handleAction('accept_suggested')} 
+                 disabled={isSubmitting}
+                 style={{ background: '#1d4ed8', color: 'white', padding: '0.6rem 1.5rem', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
+               >
+                 Accept Suggested Split
+               </button>
+            )}
 
-          <button 
-            onClick={() => setIsManualOverride(!isManualOverride)} 
-            disabled={isSubmitting}
-            style={{ background: isManualOverride ? '#e2e8f0' : '#fff', color: '#0f172a', padding: '0.6rem 1.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
-          >
-            {isManualOverride ? 'Cancel Override' : 'Manual Override'}
-          </button>
-          
-        </div>
+            <button 
+              onClick={() => setIsManualOverride(!isManualOverride)} 
+              disabled={isSubmitting}
+              style={{ background: isManualOverride ? '#e2e8f0' : '#fff', color: '#0f172a', padding: '0.6rem 1.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: isSubmitting ? 0.5 : 1 }}
+            >
+              {isManualOverride ? 'Cancel Override' : 'Manual Override'}
+            </button>
+            
+          </div>
+        )}
       </div>
     </div>
   );

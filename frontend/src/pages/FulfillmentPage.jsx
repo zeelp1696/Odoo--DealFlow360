@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { getFulfillmentData } from '../api/fulfillmentApi.js';
+import { getFulfillmentData, updateStock } from '../api/fulfillmentApi.js';
 import FulfillmentDetail from './FulfillmentDetail.jsx';
 
-export default function FulfillmentPage() {
+export default function FulfillmentPage({ user }) {
   const [data, setData] = useState({ stock: [], orders: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeFulfillmentId, setActiveFulfillmentId] = useState(null);
+  const [editingStock, setEditingStock] = useState(null);
+  const [editForm, setEditForm] = useState({ in_stock: 0, reserved: 0 });
+
+  const handleSaveStock = async (id) => {
+    try {
+      await updateStock(id, editForm.in_stock, editForm.reserved);
+      setEditingStock(null);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to update stock');
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -45,6 +57,9 @@ export default function FulfillmentPage() {
               <th style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0' }}>In Stock</th>
               <th style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0' }}>Reserved</th>
               <th style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0' }}>Available</th>
+              {user?.role !== 'sales_rep' && (
+                <th style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', width: '100px' }}>Actions</th>
+              )}
             </tr>
           </thead>
           <tbody style={{ fontSize: '0.95rem' }}>
@@ -57,9 +72,35 @@ export default function FulfillmentPage() {
                 <tr key={s.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                   <td style={{ padding: '1rem', fontWeight: '500', color: '#0f172a' }}>{s.warehouse_name}</td>
                   <td style={{ padding: '1rem', color: '#334155' }}>{s.product_name}</td>
-                  <td style={{ padding: '1rem', color: '#334155' }}>{s.in_stock}</td>
-                  <td style={{ padding: '1rem', color: '#334155' }}>{s.reserved}</td>
-                  <td style={{ padding: '1rem', fontWeight: 'bold', color: s.available > 0 ? '#16a34a' : '#dc2626' }}>{s.available}</td>
+                  <td style={{ padding: '1rem', color: '#334155' }}>
+                    {editingStock === s.id ? (
+                      <input type="number" value={editForm.in_stock} onChange={e => setEditForm({ ...editForm, in_stock: Number(e.target.value) })} style={{ width: '80px', padding: '0.25rem' }} />
+                    ) : (
+                      s.in_stock
+                    )}
+                  </td>
+                  <td style={{ padding: '1rem', color: '#334155' }}>
+                    {editingStock === s.id ? (
+                      <input type="number" value={editForm.reserved} onChange={e => setEditForm({ ...editForm, reserved: Number(e.target.value) })} style={{ width: '80px', padding: '0.25rem' }} />
+                    ) : (
+                      s.reserved
+                    )}
+                  </td>
+                  <td style={{ padding: '1rem', fontWeight: 'bold', color: s.available > 0 ? '#16a34a' : '#dc2626' }}>
+                    {editingStock === s.id ? editForm.in_stock - editForm.reserved : s.available}
+                  </td>
+                  {user?.role !== 'sales_rep' && (
+                    <td style={{ padding: '1rem' }}>
+                      {editingStock === s.id ? (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button onClick={() => handleSaveStock(s.id)} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Save</button>
+                          <button onClick={() => setEditingStock(null)} style={{ padding: '0.25rem 0.5rem', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setEditingStock(s.id); setEditForm({ in_stock: s.in_stock, reserved: s.reserved }); }} style={{ padding: '0.25rem 0.5rem', background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -112,6 +153,7 @@ export default function FulfillmentPage() {
       {activeFulfillmentId && (
         <FulfillmentDetail 
           fulfillmentId={activeFulfillmentId} 
+          user={user}
           onClose={() => setActiveFulfillmentId(null)} 
           onSuccess={() => {
             setActiveFulfillmentId(null);

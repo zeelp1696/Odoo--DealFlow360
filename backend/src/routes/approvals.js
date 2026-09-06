@@ -6,7 +6,7 @@ import { generateBillingForQuotation } from './billing.js';
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', requireRoles('admin', 'sales_manager', 'finance'), async (req, res, next) => {
+router.get('/', requireRoles('admin', 'sales_manager', 'finance', 'sales_rep'), async (req, res, next) => {
   try {
     const result = await query(`
       SELECT a.id, a.quotation_id, a.requires_manager, a.requires_finance,
@@ -17,14 +17,14 @@ router.get('/', requireRoles('admin', 'sales_manager', 'finance'), async (req, r
       JOIN quotations q ON q.id = a.quotation_id
       JOIN customers c ON c.id = q.customer_id
       JOIN users u ON u.id = q.rep_id
-      WHERE ($1 = 'admin' OR ($1 = 'sales_manager' AND a.current_stage = 'Sales Manager') OR ($1 = 'finance' AND a.current_stage = 'Finance'))
+      WHERE ($1 IN ('admin', 'sales_rep') OR ($1 = 'sales_manager' AND a.current_stage = 'Sales Manager') OR ($1 = 'finance' AND a.current_stage = 'Finance'))
       ORDER BY a.created_at DESC
     `, [req.user.role]);
     return res.json({ approvals: result.rows });
   } catch (error) { return next(error); }
 });
 
-router.get('/:id', requireRoles('admin', 'sales_manager', 'finance'), async (req, res, next) => {
+router.get('/:id', requireRoles('admin', 'sales_manager', 'finance', 'sales_rep'), async (req, res, next) => {
   try {
     const approval = (await query(`
       SELECT a.id, a.quotation_id, a.requires_manager, a.requires_finance,

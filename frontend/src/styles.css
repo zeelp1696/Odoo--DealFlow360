@@ -1018,14 +1018,14 @@ form button {
 
 /* Customer Portal Styles */
 .customer-portal { min-height: 100vh; background: #f1f4ee; color: #17231f; }
-.portal-header { height: 4.25rem; display: flex; align-items: center; gap: 1.5rem; padding: 0 2rem; background: #16443a; color: #e8f1df; box-shadow: 0 2px 8px #16443a33; }
+.portal-header { height: 4.25rem; display: flex; align-items: center; gap: 1.5rem; padding: 0 2rem; background: #16443a; color: #e8f1df; box-shadow: 0 2px 8px #16443a33; position: sticky; top: 0; z-index: 50; }
 .portal-brand { font-weight: 800; font-size: 1.5rem; letter-spacing: -.08em; }
 .portal-brand span { color: #e2b75b; }
 .portal-role { color: #9cbd9d; font: .6rem 'DM Mono'; letter-spacing: .08em; text-transform: uppercase; }
 .portal-header nav { display: flex; gap: .25rem; margin-left: 1rem; }
 .portal-tab { margin: 0; padding: .7rem 1rem; background: transparent; color: #b9d0bb; border: 1px solid transparent; border-radius: 4px; font-weight: 600; }
 .portal-tab.active, .portal-tab:hover { background: #e2b75b; color: #17231f; border-color: #e2b75b; }
-.portal-logout { margin-left: auto; margin-top: 0; padding: .55rem .8rem; background: transparent; border: 1px solid #7ba87d; color: #e8f1df; }
+.portal-logout { margin-left: auto; margin-top: 0; padding: .55rem .8rem; background: transparent; border: 1px solid #7ba87d; color: #e8f1df; border-radius: 4px; }
 .portal-content { max-width: 1120px; margin: 0 auto; padding: 2rem 2.5rem 5rem; }
 .portal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .portal-heading h1 { max-width: none; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -.05em; margin: .5rem 0; color: #16443a; }
@@ -1078,15 +1078,21 @@ form button {
 .app-content .portal-header {
   padding: 0 1rem;
   gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 .app-content .portal-brand {
   font-size: 1.3rem;
+  flex-shrink: 0;
 }
 .app-content .portal-header nav {
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: none;
   border-bottom: 0;
+  flex: 1;
+  justify-content: center;
 }
 
 .app-content .portal-header nav::-webkit-scrollbar {
@@ -1104,6 +1110,23 @@ form button {
 .app-content .portal-logout {
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
+}
+
+/* Centered page headings */
+.page-heading {
+  text-align: center;
+  padding: 2rem 2rem 1rem;
+}
+.page-heading h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #00008b;
+  margin: 0 0 0.35rem;
+}
+.page-heading p {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin: 0;
 }
 
 /* Quotations Kanban Board */
