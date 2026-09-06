@@ -14,3 +14,8 @@ export async function getPriceLists() {
   const data = await apiGet('/catalog/price-lists');
   return data.priceLists;
 }
+
+export async function getMetadata() {
+  const data = await apiGet('/catalog/metadata');
+  return data;
+}

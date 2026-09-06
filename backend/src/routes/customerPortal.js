@@ -27,33 +27,163 @@ router.get('/quote', async (req, res, next) => {
 });
 
 router.post('/quote/:id/messages', async (req, res, next) => {
+  const client = await pool.connect();
   try {
-    const ownsQuote = (await query('SELECT id FROM quotations WHERE id = $1 AND customer_id = $2', [req.params.id, req.user.customerId])).rows[0];
+    const ownsQuote = (await client.query(
+      'SELECT id FROM quotations WHERE id = $1 AND customer_id = $2',
+      [req.params.id, req.user.customerId]
+    )).rows[0];
     if (!ownsQuote) return res.status(404).json({ message: 'Quotation not found in your portal.' });
+
     const { quotationLineId = null, comment = '', counterDiscountPercent, requestedDeliveryDate } = req.body;
-    if (!comment.trim() || counterDiscountPercent === undefined || counterDiscountPercent === null || counterDiscountPercent === '' || !requestedDeliveryDate) return res.status(400).json({ message: 'Question, counter discount, and requested delivery date are required.' });
-    if (Number(counterDiscountPercent) < 0 || Number(counterDiscountPercent) > 100) return res.status(400).json({ message: 'Counter discount must be between 0 and 100.' });
-    const result = await query(`INSERT INTO negotiation_messages (quotation_id, quotation_line_id, sender_role, comment, counter_discount_percent, requested_delivery_date) VALUES ($1, $2, 'customer', $3, $4, $5) RETURNING *`, [req.params.id, quotationLineId, comment.trim(), counterDiscountPercent, requestedDeliveryDate]);
-    await query(`UPDATE quotations SET status = 'Negotiation', last_activity_at = now() WHERE id = $1`, [req.params.id]);
-    return res.status(201).json({ message: result.rows[0] });
-  } catch (error) { return next(error); }
+    if (!comment.trim() || counterDiscountPercent === undefined || counterDiscountPercent === null || counterDiscountPercent === '' || !requestedDeliveryDate) {
+      return res.status(400).json({ message: 'Comment, counter discount, and requested delivery date are required.' });
+    }
+    if (Number(counterDiscountPercent) < 0 || Number(counterDiscountPercent) > 100) {
+      return res.status(400).json({ message: 'Counter discount must be between 0 and 100.' });
+    }
+
+    await client.query('BEGIN');
+
+    // Save the negotiation message
+    const msgResult = await client.query(
+      `INSERT INTO negotiation_messages (quotation_id, quotation_line_id, sender_role, comment, counter_discount_percent, requested_delivery_date)
+       VALUES ($1, $2, 'customer', $3, $4, $5) RETURNING *`,
+      [req.params.id, quotationLineId, comment.trim(), counterDiscountPercent, requestedDeliveryDate]
+    );
+
+    // Check if the counter-discount exceeds the allowed limit on the targeted line (or any line)
+    const limitCheck = await client.query(`
+      SELECT
+        bool_or(nm.counter_discount_percent > ql.allowed_limit_percent) AS exceeds_limit
+      FROM negotiation_messages nm
+      LEFT JOIN quotation_lines ql ON ql.id = nm.quotation_line_id
+      WHERE nm.quotation_id = $1
+        AND nm.counter_discount_percent IS NOT NULL
+        AND ql.allowed_limit_percent IS NOT NULL
+    `, [req.params.id]);
+
+    const exceedsLimit = limitCheck.rows[0]?.exceeds_limit === true;
+
+    let newQuotationStatus = 'Negotiation';
+    let reEnteredApproval = false;
+
+    if (exceedsLimit) {
+      // Re-enter approval flow — close any existing pending approval first
+      await client.query(
+        `UPDATE approvals SET status = 'Superseded' WHERE quotation_id = $1 AND status = 'Pending'`,
+        [req.params.id]
+      );
+
+      // Create a fresh approval record
+      const approvalResult = await client.query(
+        `INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage, status)
+         VALUES ($1, true, false, 'Sales Manager', 'Pending') RETURNING id`,
+        [req.params.id]
+      );
+
+      // Log the re-entry in the audit trail
+      await client.query(
+        `INSERT INTO approval_audit_log (approval_id, user_id, action, note)
+         VALUES ($1, $2, 'Re-submitted', 'Customer counter-offer exceeded discount limit — re-entered approval flow')`,
+        [approvalResult.rows[0].id, req.user.id]
+      );
+
+      newQuotationStatus = 'Pending Approval';
+      reEnteredApproval = true;
+    }
+
+    await client.query(
+      `UPDATE quotations SET status = $1, last_activity_at = now() WHERE id = $2`,
+      [newQuotationStatus, req.params.id]
+    );
+
+    await client.query('COMMIT');
+
+    return res.status(201).json({
+      message: msgResult.rows[0],
+      quotationStatus: newQuotationStatus,
+      reEnteredApproval,
+      ...(reEnteredApproval && {
+        notice: 'Your counter-offer exceeds the allowed discount threshold. The quotation has been automatically re-submitted for approval.'
+      })
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    return next(error);
+  } finally {
+    client.release();
+  }
 });
 
 router.post('/quote/:id/confirm', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const quote = (await client.query('SELECT id, status FROM quotations WHERE id = $1 AND customer_id = $2 FOR UPDATE', [req.params.id, req.user.customerId])).rows[0];
+    const quote = (await client.query(
+      'SELECT id, status FROM quotations WHERE id = $1 AND customer_id = $2 FOR UPDATE',
+      [req.params.id, req.user.customerId]
+    )).rows[0];
     if (!quote) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Quotation not found in your portal.' }); }
-    const counter = (await client.query(`SELECT max(counter_discount_percent) AS counter_discount, bool_or(counter_discount_percent > ql.allowed_limit_percent) AS exceeds_limit FROM negotiation_messages nm LEFT JOIN quotation_lines ql ON ql.id = nm.quotation_line_id WHERE nm.quotation_id = $1`, [quote.id])).rows[0];
+
+    // Confirm is only valid from Negotiation or Approved state
+    if (!['Negotiation', 'Approved'].includes(quote.status)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: `Cannot confirm a quotation in "${quote.status}" status.` });
+    }
+
+    // Final threshold check on all counter-offers
+    const counter = (await client.query(`
+      SELECT
+        max(nm.counter_discount_percent) AS counter_discount,
+        bool_or(nm.counter_discount_percent > ql.allowed_limit_percent) AS exceeds_limit
+      FROM negotiation_messages nm
+      LEFT JOIN quotation_lines ql ON ql.id = nm.quotation_line_id
+      WHERE nm.quotation_id = $1
+        AND nm.counter_discount_percent IS NOT NULL
+        AND ql.allowed_limit_percent IS NOT NULL
+    `, [quote.id])).rows[0];
+
     const needsApproval = counter.exceeds_limit === true;
     const nextStatus = needsApproval ? 'Pending Approval' : 'Confirmed';
-    await client.query('UPDATE quotations SET status = $1, last_activity_at = now() WHERE id = $2', [nextStatus, quote.id]);
-    if (needsApproval) await client.query(`INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage) SELECT $1, true, false, 'Sales Manager' WHERE NOT EXISTS (SELECT 1 FROM approvals WHERE quotation_id = $1 AND status = 'Pending')`, [quote.id]);
+
+    await client.query(
+      'UPDATE quotations SET status = $1, last_activity_at = now() WHERE id = $2',
+      [nextStatus, quote.id]
+    );
+
+    if (needsApproval) {
+      // Supersede any previous pending approval
+      await client.query(
+        `UPDATE approvals SET status = 'Superseded' WHERE quotation_id = $1 AND status = 'Pending'`,
+        [quote.id]
+      );
+      const approvalResult = await client.query(
+        `INSERT INTO approvals (quotation_id, requires_manager, requires_finance, current_stage, status)
+         VALUES ($1, true, false, 'Sales Manager', 'Pending') RETURNING id`,
+        [quote.id]
+      );
+      await client.query(
+        `INSERT INTO approval_audit_log (approval_id, user_id, action, note)
+         VALUES ($1, $2, 'Re-submitted', 'Customer confirmed with terms exceeding discount threshold — approval required')`,
+        [approvalResult.rows[0].id, req.user.id]
+      );
+    }
+
     await client.query('COMMIT');
-    return res.json({ status: nextStatus, requiresApproval: needsApproval });
-  } catch (error) { await client.query('ROLLBACK'); return next(error); }
-  finally { client.release(); }
+    return res.json({
+      status: nextStatus,
+      requiresApproval: needsApproval,
+      ...(needsApproval && {
+        notice: 'Your confirmed terms exceed the allowed discount limit. The quotation has been re-submitted for manager approval.'
+      })
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    return next(error);
+  } finally {
+    client.release();
+  }
 });
 
 export default router;

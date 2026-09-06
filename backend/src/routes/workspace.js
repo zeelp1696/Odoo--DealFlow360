@@ -27,7 +27,7 @@ async function getDashboardStats() {
 
 router.get('/admin', requireAuth, requireRoles('admin'), async (_req, res) => {
   const stats = await getDashboardStats();
-  res.json({ title: 'Admin control room', actions: ['Products', 'Discount rules', 'Approval chains', 'Warehouses', 'Reports'], stats });
+  res.json({ title: 'Admin control room', actions: ['Products', 'Discount rules', 'Approval chains', 'Warehouses', 'Reports', 'Administration'], stats });
 });
 
 router.get('/sales', requireAuth, requireRoles('sales_rep', 'sales_manager'), async (_req, res) => {

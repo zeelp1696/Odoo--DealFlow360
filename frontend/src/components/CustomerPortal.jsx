@@ -20,8 +20,14 @@ export default function CustomerPortal({ session, user, onLogout }) {
   const submitRequest = async event => {
     event.preventDefault(); setNotice(''); setError('');
     try {
-      await sendCustomerRequest(session.token, portal.quote.id, { quotationLineId: lineId || null, comment, counterDiscountPercent: Number(counter), requestedDeliveryDate: deliveryDate });
-      setComment(''); setCounter(''); setDeliveryDate(''); setLineId(''); setNotice('Request sent to the DF360 team.'); await refresh();
+      const result = await sendCustomerRequest(session.token, portal.quote.id, { quotationLineId: lineId || null, comment, counterDiscountPercent: Number(counter), requestedDeliveryDate: deliveryDate });
+      setComment(''); setCounter(''); setDeliveryDate(''); setLineId('');
+      if (result.reEnteredApproval) {
+        setNotice('⚠️ ' + result.notice);
+      } else {
+        setNotice('Request sent to the DF360 team.');
+      }
+      await refresh();
     } catch (exception) { setError(exception.message); }
   };
 
