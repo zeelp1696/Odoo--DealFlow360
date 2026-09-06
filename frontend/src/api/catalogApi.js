@@ -10,6 +10,11 @@ export async function getCustomers() {
   return data.customers; 
 }
 
+export async function getUsers() {
+  const data = await apiGet('/catalog/users');
+  return data.users;
+}
+
 export async function getPriceLists() {
   const data = await apiGet('/catalog/price-lists');
   return data.priceLists;

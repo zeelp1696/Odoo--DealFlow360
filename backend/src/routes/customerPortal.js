@@ -16,22 +16,29 @@ router.patch('/profile', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
-router.get('/quote', async (req, res, next) => {
+router.get('/quotes', async (req, res, next) => {
   try {
-    const quote = (await query(`SELECT q.id, q.code, q.status, q.customer_id, c.name AS customer_name FROM quotations q JOIN customers c ON c.id = q.customer_id WHERE q.customer_id = $1 ORDER BY q.created_at DESC LIMIT 1`, [req.user.customerId])).rows[0];
-    if (!quote) return res.json({ quote: null, lines: [], messages: [] });
+    const quotes = (await query(`SELECT q.id, q.code, q.status, q.created_at, q.customer_id, COALESCE(u.name, c.name) AS customer_name FROM quotations q LEFT JOIN users u ON u.id = q.user_id LEFT JOIN customers c ON c.id = q.customer_id WHERE q.user_id = $1 AND q.status NOT IN ('Draft', 'Pending Approval') ORDER BY q.created_at DESC`, [req.user.id])).rows;
+    return res.json({ quotes });
+  } catch (error) { return next(error); }
+});
+
+router.get('/quotes/:id', async (req, res, next) => {
+  try {
+    const quote = (await query(`SELECT q.id, q.code, q.status, q.customer_id, COALESCE(u.name, c.name) AS customer_name FROM quotations q LEFT JOIN users u ON u.id = q.user_id LEFT JOIN customers c ON c.id = q.customer_id WHERE q.user_id = $1 AND q.id = $2`, [req.user.id, req.params.id])).rows[0];
+    if (!quote) return res.status(404).json({ message: 'Quotation not found.' });
     const lines = (await query(`SELECT ql.id, p.name, ql.quantity, ql.unit_price, ql.discount_percent, ql.allowed_limit_percent FROM quotation_lines ql JOIN products p ON p.id = ql.product_id WHERE ql.quotation_id = $1 ORDER BY ql.id`, [quote.id])).rows;
     const messages = (await query(`SELECT id, quotation_line_id, sender_role, comment, counter_discount_percent, requested_delivery_date, created_at FROM negotiation_messages WHERE quotation_id = $1 ORDER BY created_at ASC`, [quote.id])).rows;
     return res.json({ quote, lines, messages });
   } catch (error) { return next(error); }
 });
 
-router.post('/quote/:id/messages', async (req, res, next) => {
+router.post('/quotes/:id/messages', async (req, res, next) => {
   const client = await pool.connect();
   try {
     const ownsQuote = (await client.query(
-      'SELECT id FROM quotations WHERE id = $1 AND customer_id = $2',
-      [req.params.id, req.user.customerId]
+      'SELECT id FROM quotations WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
     )).rows[0];
     if (!ownsQuote) return res.status(404).json({ message: 'Quotation not found in your portal.' });
 
@@ -116,13 +123,13 @@ router.post('/quote/:id/messages', async (req, res, next) => {
   }
 });
 
-router.post('/quote/:id/confirm', async (req, res, next) => {
+router.post('/quotes/:id/confirm', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const quote = (await client.query(
-      'SELECT id, status FROM quotations WHERE id = $1 AND customer_id = $2 FOR UPDATE',
-      [req.params.id, req.user.customerId]
+      'SELECT id, status FROM quotations WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [req.params.id, req.user.id]
     )).rows[0];
     if (!quote) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Quotation not found in your portal.' }); }
 

@@ -7,7 +7,8 @@ async function request(token, path, options = {}) {
   return body;
 }
 
-export const getCustomerQuote = token => request(token, '/quote');
+export const getCustomerQuotes = token => request(token, '/quotes');
+export const getCustomerQuoteDetails = (token, id) => request(token, `/quotes/${id}`);
 export const updateCustomerProfile = (token, name) => request(token, '/profile', { method: 'PATCH', body: JSON.stringify({ name }) });
-export const sendCustomerRequest = (token, quoteId, payload) => request(token, `/quote/${quoteId}/messages`, { method: 'POST', body: JSON.stringify(payload) });
-export const confirmCustomerQuote = (token, quoteId) => request(token, `/quote/${quoteId}/confirm`, { method: 'POST', body: '{}' });
+export const sendCustomerRequest = (token, quoteId, payload) => request(token, `/quotes/${quoteId}/messages`, { method: 'POST', body: JSON.stringify(payload) });
+export const confirmCustomerQuote = (token, quoteId) => request(token, `/quotes/${quoteId}/confirm`, { method: 'POST', body: '{}' });

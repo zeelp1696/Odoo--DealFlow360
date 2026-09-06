@@ -1,30 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { getProducts, getCustomers } from '../api/catalogApi.js';
+import { getProducts, getUsers } from '../api/catalogApi.js';
 import { getCeilings } from '../api/discountsApi.js';
 import { createQuotation, addLine, submitForApproval } from '../api/quotationsApi.js';
 import { apiPost } from '../api/client.js';
 
 export default function QuotationBuilder({ onClose, onSuccess }) {
-  const [customers, setCustomers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [ceilings, setCeilings] = useState([]);
   
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
   const [cart, setCart] = useState([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    Promise.all([getCustomers(), getProducts(), getCeilings()])
-      .then(([custData, prodData, ceilData]) => {
-        setCustomers(custData || []);
+    Promise.all([getUsers(), getProducts(), getCeilings()])
+      .then(([userData, prodData, ceilData]) => {
+        setUsers(userData || []);
         setProducts(prodData || []);
         setCeilings(ceilData || []);
       })
       .catch(err => setMessage(err.message));
   }, []);
 
-  const selectedCustomer = customers.find(c => String(c.id) === String(selectedCustomerId));
+  const selectedUser = users.find(u => String(u.id) === String(selectedUserId));
 
   // Group products by category
   const categories = [...new Set(products.map(p => p.category))];
@@ -61,7 +61,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
   }, [cart]);
 
   const calculateLine = (item) => {
-    const limit = ceilings.find(c => c.tier === selectedCustomer?.tier && c.category === item.product.category)?.max_discount_percent || 0;
+    const limit = ceilings.find(c => c.tier === (selectedUser?.tier || 'Bronze') && c.category === item.product.category)?.max_discount_percent || 0;
     const overLimit = Number(item.discountPercent) > Number(limit);
     const total = Number(item.product.base_price) * Number(item.quantity) * (1 - Number(item.discountPercent) / 100);
     return { limit, overLimit, total };
@@ -71,8 +71,8 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
   const anyOverLimit = cart.some(item => calculateLine(item).overLimit);
 
   const handleConfirm = async (saveAsDraft = false) => {
-    if (!selectedCustomerId) {
-      setMessage('Please select a customer first.');
+    if (!selectedUserId) {
+      setMessage('Please select a user first.');
       return;
     }
     if (cart.length === 0) {
@@ -84,7 +84,7 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
     setMessage(saveAsDraft ? 'Saving draft...' : 'Creating quotation...');
     
     try {
-      const quotation = await createQuotation(selectedCustomerId);
+      const quotation = await createQuotation(selectedUserId);
       
       setMessage('Adding lines...');
       for (const item of cart) {
@@ -102,7 +102,8 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
       
       setMessage(saveAsDraft ? 'Draft saved successfully!' : 'Quotation submitted successfully!');
       setTimeout(() => {
-        onSuccess();
+        if (onSuccess) onSuccess();
+        else if (onClose) onClose();
       }, 1000);
     } catch (err) {
       setMessage(err.message || 'An error occurred while saving.');
@@ -173,9 +174,13 @@ export default function QuotationBuilder({ onClose, onSuccess }) {
             <div className="cart-header">
               <label>
                 <strong>Customer</strong>
-                <select value={selectedCustomerId} onChange={e => setSelectedCustomerId(e.target.value)} required>
-                  <option value="">Choose customer...</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name} · {c.tier}</option>)}
+                <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} required>
+                  <option value="">Choose user...</option>
+                  {users.filter(u => u.role === 'customer').map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} {u.tier ? `- ${u.tier}` : ''}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>

@@ -43,6 +43,13 @@ router.get('/customers', requireRoles(...internalRoles), async (_req, res, next)
   } catch (error) { return next(error); }
 });
 
+router.get('/users', requireRoles(...internalRoles), async (_req, res, next) => {
+  try {
+    const result = await query('SELECT u.id, u.name, u.role, c.tier FROM users u LEFT JOIN customers c ON c.id = u.customer_id ORDER BY u.name');
+    return res.json({ users: result.rows });
+  } catch (error) { return next(error); }
+});
+
 router.get('/price-lists', requireRoles(...internalRoles), async (_req, res, next) => {
   try {
     const result = await query(`

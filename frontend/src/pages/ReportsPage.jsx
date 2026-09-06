@@ -65,7 +65,14 @@ export default function ReportsPage({ user }) {
   const [filters, setFilters] = useState({ period: '', approval_status: '', sales_team: '', product: '' });
   const [isExporting, setIsExporting] = useState(false);
 
+  const isAuthorized = user?.role === 'admin';
+
   const fetchData = useCallback(async () => {
+    if (!isAuthorized) {
+      setLoading(false);
+      setData({ overview: {}, approvalStats: [], repStats: [], recentQuotations: [] });
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -80,13 +87,14 @@ export default function ReportsPage({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, isAuthorized]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleExport = async (format) => {
+    if (!isAuthorized) return;
     setIsExporting(true);
     try {
       const session = JSON.parse(localStorage.getItem('dealflow-session') || '{}');
@@ -116,16 +124,6 @@ export default function ReportsPage({ user }) {
       setIsExporting(false);
     }
   };
-
-  // Admin-only guard
-  if (user?.role !== 'admin') {
-    return (
-      <section style={{ padding: '3rem', textAlign: 'center' }}>
-        <h2 style={{ color: '#94a3b8' }}>Access Restricted</h2>
-        <p style={{ color: '#64748b' }}>The Reports Dashboard is for Platform Admins only.</p>
-      </section>
-    );
-  }
 
   const riskColors = { HIGH: '#ef4444', MEDIUM: '#f59e0b', LOW: '#22c55e' };
 

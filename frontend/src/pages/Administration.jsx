@@ -10,7 +10,10 @@ export default function Administration({ user }) {
   const [form, setForm] = useState({ name: '', email: '', role: 'sales_rep', password: 'DealFlow360!24' });
   const [formMessage, setFormMessage] = useState('');
 
+  const isAuthorized = user?.role === 'admin';
+
   const fetchUsers = () => {
+    if (!isAuthorized) { setLoading(false); return; }
     apiGet('/administration/users')
       .then(res => {
         setUsers(res.users || []);
@@ -24,7 +27,7 @@ export default function Administration({ user }) {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [isAuthorized]);
 
   const handleAddRole = async (e) => {
     e.preventDefault();
@@ -48,17 +51,8 @@ export default function Administration({ user }) {
     customer: 'Customer' 
   };
 
-  if (user?.role !== 'admin') {
-    return (
-      <section style={{ padding: '3rem', textAlign: 'center' }}>
-        <h2 style={{ color: '#94a3b8' }}>Access Restricted</h2>
-        <p style={{ color: '#64748b' }}>The Administration Dashboard is for Platform Admins only.</p>
-      </section>
-    );
-  }
-
   if (loading) return <div style={{ padding: '2rem' }}>Loading users...</div>;
-  if (error) return <div className="error" style={{ margin: '2rem' }}>{error}</div>;
+  if (error && isAuthorized) return <div className="error" style={{ margin: '2rem' }}>{error}</div>;
 
   return (
     <section className="mockup-page-container">

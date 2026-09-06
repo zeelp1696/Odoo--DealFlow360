@@ -11,8 +11,8 @@ async function loadQuotation(id, user) {
   const params = [id];
   let scope = '';
   if (user.role === 'sales_rep') { params.push(user.id); scope = 'AND q.rep_id = $2'; }
-  if (user.role === 'customer') { params.push(user.customerId); scope = 'AND q.customer_id = $2'; }
-  return (await query(`SELECT q.*, c.name AS customer_name FROM quotations q JOIN customers c ON c.id = q.customer_id WHERE q.id = $1 ${scope}`, params)).rows[0];
+  if (user.role === 'customer') { params.push(user.id); scope = 'AND q.user_id = $2'; }
+  return (await query(`SELECT q.*, COALESCE(u.name, c.name) AS customer_name FROM quotations q LEFT JOIN users u ON u.id = q.user_id LEFT JOIN customers c ON c.id = q.customer_id WHERE q.id = $1 ${scope}`, params)).rows[0];
 }
 
 router.get('/', async (req, res, next) => {
@@ -20,19 +20,21 @@ router.get('/', async (req, res, next) => {
     const params = [];
     let scope = '';
     if (req.user.role === 'sales_rep') { params.push(req.user.id); scope = 'WHERE q.rep_id = $1'; }
-    if (req.user.role === 'customer') { params.push(req.user.customerId); scope = 'WHERE q.customer_id = $1'; }
-    const result = await query(`SELECT q.id, q.code, q.status, q.blended_risk_score, q.risk_label, q.created_at, c.name AS customer_name FROM quotations q JOIN customers c ON c.id = q.customer_id ${scope} ORDER BY q.created_at DESC`, params);
+    if (req.user.role === 'customer') { params.push(req.user.id); scope = 'WHERE q.user_id = $1'; }
+    const result = await query(`SELECT q.id, q.code, q.status, q.blended_risk_score, q.risk_label, q.created_at, COALESCE(u.name, c.name) AS customer_name FROM quotations q LEFT JOIN users u ON u.id = q.user_id LEFT JOIN customers c ON c.id = q.customer_id ${scope} ORDER BY q.created_at DESC`, params);
     return res.json({ quotations: result.rows });
   } catch (error) { return next(error); }
 });
 
 router.post('/', requireRoles('sales_rep', 'sales_manager', 'admin'), async (req, res, next) => {
   try {
-    const { customerId, priceListId = null } = req.body;
-    const customer = (await query('SELECT id FROM customers WHERE id = $1', [customerId])).rows[0];
-    if (!customer) return res.status(400).json({ message: 'Select a valid customer.' });
+    const { userId, priceListId = null } = req.body;
+    const targetUser = (await query('SELECT id, customer_id, name FROM users WHERE id = $1', [userId])).rows[0];
+    if (!targetUser) return res.status(400).json({ message: 'Select a valid user.' });
+    
+    const customerId = targetUser.customer_id;
     const code = `Q-${Date.now().toString().slice(-7)}`;
-    const result = await query('INSERT INTO quotations (code, customer_id, rep_id, price_list_id) VALUES ($1, $2, $3, $4) RETURNING *', [code, customerId, req.user.id, priceListId]);
+    const result = await query('INSERT INTO quotations (code, customer_id, user_id, rep_id, price_list_id) VALUES ($1, $2, $3, $4, $5) RETURNING *', [code, customerId, userId, req.user.id, priceListId]);
     return res.status(201).json({ quotation: result.rows[0] });
   } catch (error) { return next(error); }
 });
@@ -51,9 +53,17 @@ router.post('/:id/lines', requireRoles('sales_rep', 'sales_manager', 'admin'), a
     const quotation = await loadQuotation(req.params.id, req.user);
     if (!quotation || quotation.status !== 'Draft') return res.status(404).json({ message: 'Editable draft quotation not found.' });
     const { productId, quantity = 1, discountPercent = 0 } = req.body;
-    const product = (await query('SELECT p.*, c.tier FROM products p JOIN customers c ON c.id = $2 WHERE p.id = $1', [productId, quotation.customer_id])).rows[0];
+    const product = (await query('SELECT p.* FROM products p WHERE p.id = $1', [productId])).rows[0];
     if (!product || Number(quantity) < 1 || Number(discountPercent) < 0 || Number(discountPercent) > 100) return res.status(400).json({ message: 'Select a valid product, quantity, and discount.' });
-    const ceiling = (await query('SELECT max_discount_percent FROM discount_tier_ceilings WHERE tier = $1 AND category = $2', [product.tier, product.category])).rows[0];
+    
+    const targetUser = (await query('SELECT customer_id FROM users WHERE id = $1', [quotation.user_id])).rows[0];
+    let tier = 'Bronze';
+    if (targetUser && targetUser.customer_id) {
+      const customer = (await query('SELECT tier FROM customers WHERE id = $1', [targetUser.customer_id])).rows[0];
+      if (customer && customer.tier) tier = customer.tier;
+    }
+    
+    const ceiling = (await query('SELECT max_discount_percent FROM discount_tier_ceilings WHERE tier = $1 AND category = $2', [tier, product.category])).rows[0];
     const allowedLimit = Number(ceiling?.max_discount_percent || 0);
     const line = (await query(`INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, discount_percent, allowed_limit_percent, over_limit_points, line_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [req.params.id, productId, quantity, product.base_price, discountPercent, allowedLimit, Math.max(0, discountPercent - allowedLimit), Number(discountPercent) > allowedLimit ? 'OVER' : 'OK'])).rows[0];
     await query('UPDATE quotations SET last_activity_at = now() WHERE id = $1', [req.params.id]);
